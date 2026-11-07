@@ -21,6 +21,8 @@ class SpectacleWindow : public QQuickView
     Q_PROPERTY(bool annotating READ isAnnotating WRITE setAnnotating NOTIFY annotatingChanged FINAL)
     Q_PROPERTY(qreal logicalX READ logicalX NOTIFY logicalXChanged)
     Q_PROPERTY(qreal logicalY READ logicalY NOTIFY logicalYChanged)
+    /// Ectolens: the Ectolens window (not the overlay); it takes the window's look (EctoTheme.window).
+    Q_PROPERTY(bool isViewer READ isViewer CONSTANT FINAL)
 
 public:
     enum TitlePreset {
@@ -36,6 +38,10 @@ public:
     qreal logicalY() const;
 
     bool isAnnotating() const;
+    bool isViewer() const
+    {
+        return m_isViewer;
+    }
     void setAnnotating(bool annotating);
 
     /**
@@ -96,6 +102,7 @@ Q_SIGNALS:
     void logicalYChanged();
 
 protected:
+    bool m_isViewer = false;
     explicit SpectacleWindow(QQmlEngine *engine, QWindow *parent = nullptr);
     ~SpectacleWindow();
 

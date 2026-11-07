@@ -8,12 +8,15 @@
 
 #include "SettingsDialog.h"
 
+#include "AppearanceOptionsPage.h"
+#include "AgentsOptionsPage.h"
 #include "GeneralOptionsPage.h"
 #include "ImageSaveOptionsPage.h"
 #include "OcrLanguageSelector.h"
 #include "OcrManager.h"
 #include "ShortcutsOptionsPage.h"
-#include "VideoSaveOptionsPage.h"
+#include "RecordingOptionsPage.h"
+#include "Gui/CaptureWindow.h"
 #include "settings.h"
 
 #include <QFontDatabase>
@@ -30,21 +33,48 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     : KConfigDialog(parent, "settings"_L1, Settings::self())
     , m_generalPage(new GeneralOptionsPage(this))
     , m_imagesPage(new ImageSaveOptionsPage(this))
-    , m_videosPage(new VideoSaveOptionsPage(this))
+    , m_videosPage(new RecordingOptionsPage(this))
     , m_shortcutsPage(new ShortcutsOptionsPage(this))
+    , m_appearancePage(new AppearanceOptionsPage(this))
 {
     setFaceType(KPageDialog::List);
     addPage(m_generalPage, Settings::self(), i18nc("Settings category", "General"), "spectacle"_L1);
     addPage(m_imagesPage, Settings::self(), i18nc("Settings category", "Image Saving"), "image-x-generic"_L1);
-    addPage(m_videosPage, Settings::self(), i18nc("Settings category", "Video Saving"), "video-x-generic"_L1);
-    addPage(m_shortcutsPage, i18nc("Settings category", "Shortcuts"), "preferences-desktop-keyboard"_L1);
+    m_recordingItem = addPage(m_videosPage, Settings::self(), i18nc("Settings category", "Recording"), "camera-video"_L1);
+    m_appearanceItem = addPage(m_appearancePage, Settings::self(), i18nc("Settings category", "Appearance"), "preferences-desktop-color"_L1);
+    addPage(new AgentsOptionsPage(this), Settings::self(), i18nc("Settings category", "Model Context Protocol (MCP)"), "preferences-plugin"_L1);
+    m_shortcutsItem = addPage(m_shortcutsPage, i18nc("Settings category", "Shortcuts"), "preferences-desktop-keyboard"_L1);
     connect(m_shortcutsPage, &ShortcutsOptionsPage::shortCutsChanged, this, [this] {
         updateButtons();
     });
     connect(m_generalPage, &GeneralOptionsPage::ocrLanguageChanged, this, [this] {
         updateButtons();
     });
+    connect(m_videosPage, &RecordingOptionsPage::changed, this, [this] {
+        updateButtons();
+    });
     connect(this, &KConfigDialog::currentPageChanged, this, &SettingsDialog::updateButtons);
+}
+
+void SettingsDialog::showRecordingPage()
+{
+    setCurrentPage(m_recordingItem);
+}
+
+void SettingsDialog::showAppearancePage()
+{
+    setCurrentPage(m_appearanceItem);
+}
+
+void SettingsDialog::showShortcutsPage()
+{
+    setCurrentPage(m_shortcutsItem);
+}
+
+void SettingsDialog::hideEvent(QHideEvent *event)
+{
+    CaptureWindow::setAllBelowDialogs(false);
+    KConfigDialog::hideEvent(event);
 }
 
 SettingsDialog::~SettingsDialog()
@@ -67,6 +97,7 @@ QSize SettingsDialog::sizeHint() const
     sh = sh.expandedTo(m_imagesPage->sizeHint());
     sh = sh.expandedTo(m_videosPage->sizeHint());
     sh = sh.expandedTo(m_shortcutsPage->sizeHint());
+    sh = sh.expandedTo(m_appearancePage->sizeHint());
     sh.rheight() += headerSize.height() + footerSize.height()
                  + style()->pixelMetric(QStyle::PM_LayoutVerticalSpacing) * 2;
     sh = KConfigDialog::sizeHint().expandedTo(sh);
@@ -82,7 +113,10 @@ void SettingsDialog::showEvent(QShowEvent *event)
     windowHandle()->setFlag(Qt::WindowStaysOnTopHint, onTop);
     
     m_generalPage->refreshOcrLanguageSettings();
-    
+
+    // Ectolens: the capture overlay sits on the overlay layer; let this dialog be seen.
+    CaptureWindow::setAllBelowDialogs(true);
+
     KConfigDialog::showEvent(event);
 }
 
@@ -92,7 +126,7 @@ bool SettingsDialog::hasChanged()
     if (OcrManager::instance()->isAvailable()) {
         ocrHasChanges = m_generalPage->ocrLanguageSelector()->hasChanges();
     }
-    return m_shortcutsPage->isModified() || ocrHasChanges || KConfigDialog::hasChanged();
+    return m_shortcutsPage->isModified() || ocrHasChanges || m_videosPage->hasChanges() || KConfigDialog::hasChanged();
 }
 
 bool SettingsDialog::isDefault()
@@ -101,13 +135,14 @@ bool SettingsDialog::isDefault()
     if (OcrManager::instance()->isAvailable()) {
         ocrIsDefault = m_generalPage->ocrLanguageSelector()->isDefault();
     }
-    return currentPage()->name() != i18n("Shortcuts") && ocrIsDefault && KConfigDialog::isDefault();
+    return currentPage()->name() != i18n("Shortcuts") && ocrIsDefault && m_videosPage->isDefault() && KConfigDialog::isDefault();
 }
 
 void SettingsDialog::updateSettings()
 {
     KConfigDialog::updateSettings();
     m_shortcutsPage->saveChanges();
+    m_videosPage->save();
 
     if (OcrManager::instance()->isAvailable()) {
         m_generalPage->ocrLanguageSelector()->saveSettings();
@@ -122,6 +157,7 @@ void SettingsDialog::updateWidgets()
 {
     KConfigDialog::updateWidgets();
     m_shortcutsPage->resetChanges();
+    m_videosPage->load();
 
     if (OcrManager::instance()->isAvailable()) {
         m_generalPage->ocrLanguageSelector()->updateWidgets();
@@ -141,6 +177,7 @@ void SettingsDialog::updateWidgetsDefault()
 
     KConfigDialog::updateWidgetsDefault();
     m_shortcutsPage->defaults();
+    m_videosPage->applyDefaults();
 
     if (OcrManager::instance()->isAvailable()) {
         m_generalPage->ocrLanguageSelector()->applyDefaults();

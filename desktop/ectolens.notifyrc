@@ -1,0 +1,32 @@
+[Global]
+IconName=ectolens
+DesktopEntry=com.ectonomic.ectolens
+Name=Ectolens
+Comment=Screenshot Capture Utility
+
+[Event/newScreenshotSaved]
+Name=New Screenshot Saved
+Comment=A new screenshot was captured and saved
+Action=Popup
+
+[Event/recordingStarted]
+Name=Recording Started
+Comment=A recording was started
+IconName=media-record
+Action=Popup
+
+[Event/recordingSaveInProgress]
+Name=Saving Recording
+Comment=A recording is being saved
+IconName=process-working-symbolic
+Action=Popup
+
+[Event/recordingSaved]
+Name=Recording Saved
+Comment=A recording was captured and saved
+Action=Popup
+
+[Event/ocrTextExtracted]
+Name=Text Extracted
+Comment=Text has been extracted from image using OCR
+Action=Popup

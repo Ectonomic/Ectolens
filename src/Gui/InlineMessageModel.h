@@ -45,6 +45,8 @@ public:
         Saved = InformationalType + 1,
         Shared = InformationalType + 2,
         Scanned = InformationalType + 3,
+        // Ectolens: text read from the picture; its data is the text, for Show Text.
+        Extracted = InformationalType + 4,
     };
     Q_ENUM(InlineMessageType)
 

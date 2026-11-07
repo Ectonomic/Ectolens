@@ -1,0 +1,15 @@
+Planted fault for tests/install/rpm-check.sh (PLANT=tests/install/plants/shortcuts-give-back-does-nothing.patch).
+rpm-check: ectolens-shortcuts give-back gives nothing back. Must fail: ectolens-shortcuts give-back gives Spectacle every shortcut it had.
+
+diff -ru a/tools/install/ectolens-shortcuts b/tools/install/ectolens-shortcuts
+--- a/tools/install/ectolens-shortcuts	2026-11-05 02:22:33.808823303 -0500
++++ b/tools/install/ectolens-shortcuts	2026-11-05 02:22:33.808863784 -0500
+@@ -20,7 +20,7 @@
+     take) take_shortcuts;;
+     give-back)
+         [ -s "$STATE/spectacle-shortcuts" ] || fail "no shortcuts were moved from Spectacle for you ($STATE)"
+-        give_back_shortcuts
++        kept_shortcuts=1
+         if [ "$kept_shortcuts" = 0 ]; then rm -f "$STATE/spectacle-shortcuts"; rmdir "$STATE" 2>/dev/null || true; fi;;
+     -h|--help) usage "$0";;
+     *) usage "$0"; exit 2;;

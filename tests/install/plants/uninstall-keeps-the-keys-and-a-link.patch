@@ -1,0 +1,27 @@
+Planted fault for tests/install/stranger-check.sh (PLANT=tests/install/plants/uninstall-keeps-the-keys-and-a-link.patch).
+fedora-44: uninstall.sh gives nothing back (and doesn't read it back) and leaves the icon links. Must fail: Spectacle has every shortcut it had before the install; no link into the install is left in ~/.local.
+
+diff -ru a/tools/install/shortcuts.sh b/tools/install/shortcuts.sh
+--- a/tools/install/shortcuts.sh	2026-11-05 02:05:55.134451480 -0500
++++ b/tools/install/shortcuts.sh	2026-11-05 02:05:55.134756304 -0500
+@@ -78,9 +78,7 @@
+             if has_component "$SPECTACLE"; then
+                 # Ectolens lets go first (one key, one owner), then Spectacle takes them back
+                 while IFS=$'\t' read -r action k; do set_keys "$ECTOLENS" "$action" '@a(ai) []'; done < "$STATE/spectacle-shortcuts"
+-                while IFS=$'\t' read -r action k; do set_keys "$SPECTACLE" "$action" "$k"; done < "$STATE/spectacle-shortcuts"
+                 bad=0
+-                while IFS=$'\t' read -r action k; do [ "$(keys "$SPECTACLE" "$action")" = "$k" ] || bad=1; done < "$STATE/spectacle-shortcuts"
+                 if [ "$bad" = 1 ]; then
+                     # undone: Ectolens keeps them, so Print Screen still does something
+                     while IFS=$'\t' read -r action k; do set_keys "$SPECTACLE" "$action" '@a(ai) []'; done < "$STATE/spectacle-shortcuts"
+diff -ru a/uninstall.sh b/uninstall.sh
+--- a/uninstall.sh	2026-11-05 02:05:55.134515301 -0500
++++ b/uninstall.sh	2026-11-05 02:05:55.134838095 -0500
+@@ -55,6 +55,7 @@
+     step "Removing Ectolens"
+     if [ -f "$STATE/links" ]; then
+         while IFS= read -r link; do
++            case "$link" in */icons/*) continue;; esac
+             [ -L "$link" ] && case "$(readlink "$link")" in "$PREFIX"/*) rm -f "$link";; esac
+         done < "$STATE/links"
+     fi

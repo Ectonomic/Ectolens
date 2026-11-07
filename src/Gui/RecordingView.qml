@@ -12,6 +12,11 @@ import org.kde.spectacle.private
 
 FocusScope {
     id: root
+    /// Ectolens: the window's bottom row holds play, the scrubber and the time, so the
+    /// view's own floating controls stay hidden there.
+    property bool ownControls: true
+    readonly property alias player: mediaPlayer
+    readonly property alias animated: animatedImage
     readonly property bool hasAnimatedImage: animatedImage.status === Image.Ready
     readonly property bool hasContent: hasAnimatedImage || mediaPlayer.hasVideo
     readonly property bool playing: hasAnimatedImage ? animatedImage.playing : mediaPlayer.playing
@@ -174,7 +179,7 @@ FocusScope {
         states: [
             State {
                 name: "hovered"
-                when: tbHoverHandler.hovered && root.hasContent
+                when: root.ownControls && tbHoverHandler.hovered && root.hasContent
                 PropertyChanges {
                     target: toolBar
                     opacity: 1
@@ -182,7 +187,7 @@ FocusScope {
             },
             State {
                 name: "normal"
-                when: !tbHoverHandler.hovered || !root.hasContent
+                when: !root.ownControls || !tbHoverHandler.hovered || !root.hasContent
                 PropertyChanges {
                     target: toolBar
                     opacity: 0

@@ -27,7 +27,11 @@ class VideoPlatform : public QObject
     Q_PROPERTY(Formats supportedFormats READ supportedFormats NOTIFY supportedFormatsChanged)
     Q_PROPERTY(qint64 recordedTime READ recordedTime NOTIFY recordedTimeChanged)
     Q_PROPERTY(bool isRecording READ isRecording NOTIFY recordingStateChanged)
+    // Ectolens: Stop was pressed and the file is being finished (Rendering)
+    Q_PROPERTY(bool isFinishing READ isFinishing NOTIFY recordingStateChanged)
     Q_PROPERTY(RecordingState recordingState READ recordingState NOTIFY recordingStateChanged)
+    /// Ectolens: frames lost because encoding fell behind, in the current recording
+    Q_PROPERTY(int droppedFrames READ droppedFrames NOTIFY droppedFramesChanged)
 
 public:
     explicit VideoPlatform(QObject *parent = nullptr);
@@ -46,6 +50,7 @@ public:
         NotRecording, //< Not recording anything
         Recording, //< Actively recording
         Rendering, //< Finishing the recording, no longer actively receiving frames but still processing to do.
+        Paused, //< Ectolens: paused; the paused stretch is left out of the file
         Finished //< Recording finished completely.
     };
     Q_ENUM(RecordingState)
@@ -110,7 +115,7 @@ public:
          */
         Gif = 1 << 3,
         /// Used to define the default format for settings
-        DefaultFormat = WebM_VP9,
+        DefaultFormat = MP4_H264, // Ectolens: MP4 holds every encoder and quality choice
     };
     Q_FLAG(Format)
     Q_DECLARE_FLAGS(Formats, Format)
@@ -128,12 +133,17 @@ public:
     Q_INVOKABLE static bool formatSupportsAudio(VideoPlatform::Format format);
 
     bool isRecording() const;
+    bool isFinishing() const;
     virtual bool isRecordingAudio() const = 0;
     qint64 recordedTime() const;
 
     RecordingState recordingState() const;
 
     RecordingMode recordingMode() const;
+    virtual int droppedFrames() const
+    {
+        return 0;
+    }
 
 protected:
     void setRecordingState(RecordingState state);
@@ -146,6 +156,13 @@ public Q_SLOTS:
                                 const QVariantMap &options,
                                 bool includePointer) = 0;
     virtual void finishRecording() = 0;
+    /// Ectolens: pause and resume; a platform that can't pause ignores them
+    virtual void pauseRecording()
+    {
+    }
+    virtual void resumeRecording()
+    {
+    }
 
 Q_SIGNALS:
     void supportedRecordingModesChanged();
@@ -154,6 +171,7 @@ Q_SIGNALS:
     void recordingFailed(const QString &message);
     void recordingCanceled(const QString &message);
     void recordedTimeChanged();
+    void droppedFramesChanged();
     void recordingStateChanged(RecordingState state);
 
     /// Request a region from the platform agnostic selection editor
@@ -161,6 +179,8 @@ Q_SIGNALS:
 
 private:
     QElapsedTimer m_elapsedTimer;
+    QElapsedTimer m_pauseTimer; // Ectolens: runs while paused
+    qint64 m_pausedTime = 0; // Ectolens: total paused milliseconds
     QBasicTimer m_basicTimer;
     qint64 m_recordedTime = 0;
     RecordingState m_recordingState = RecordingState::NotRecording;

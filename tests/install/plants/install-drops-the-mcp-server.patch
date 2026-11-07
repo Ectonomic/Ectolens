@@ -1,0 +1,14 @@
+Planted fault for tests/install/stranger-check.sh (PLANT=tests/install/plants/install-drops-the-mcp-server.patch).
+fedora-44: the install loses ectolens-mcp. Must fail: ectolens-mcp answers initialize.
+
+diff -ru a/install.sh b/install.sh
+--- a/install.sh	2026-11-05 02:22:33.805262731 -0500
++++ b/install.sh	2026-11-05 02:22:33.805331032 -0500
+@@ -218,6 +218,7 @@
+ QT_QPA_PLATFORM=offscreen "$PREFIX/bin/ectolens" --version >/dev/null || fail "the built Ectolens doesn't start"
+ # the uninstaller travels with the install, so it works after this folder is gone
+ install -m 755 "$SRC/uninstall.sh" "$PREFIX/share/ectolens-install/uninstall.sh"
++rm -f "$PREFIX/bin/ectolens-mcp"
+ install -m 644 "$SRC/tools/install/common.sh" "$SRC/tools/install/shortcuts.sh" "$PREFIX/share/ectolens-install/tools/install/"
+ mcp=$(mcp_running_from "$PREFIX")
+ [ -z "$mcp" ] || say "$(echo $mcp | wc -w) AI agent connections (ectolens-mcp) keep the old version until their sessions restart."

@@ -1,0 +1,23 @@
+Planted fault for tests/install/stranger-check.sh (PLANT=tests/install/plants/install-leaves-spectacle-its-keys.patch).
+fedora-44: install.sh gives Ectolens the keys without taking them from Spectacle, and doesn't read them back. Must fail: KWin's shortcut service gives those keys to Ectolens and none to Spectacle.
+
+diff -ru a/tools/install/shortcuts.sh b/tools/install/shortcuts.sh
+--- a/tools/install/shortcuts.sh	2026-11-05 02:05:55.123452950 -0500
++++ b/tools/install/shortcuts.sh	2026-11-05 02:05:55.123796965 -0500
+@@ -41,15 +41,13 @@
+             moved=$(mktemp)
+             while IFS=$'\t' read -r action k; do
+                 [ "$finishing" = 1 ] && ! no_keys "$(keys "$ECTOLENS" "$action")" && continue
+-                set_keys "$SPECTACLE" "$action" '@a(ai) []'
+                 set_keys "$ECTOLENS" "$action" "$k"
+                 printf '%s\t%s\n' "$action" "$k" >> "$moved"
+             done < "$STATE/spectacle-shortcuts"
+             # read back: Ectolens holds each moved key, Spectacle none of them
+             bad=0
+             while IFS=$'\t' read -r action k; do
+-                [ "$(keys "$ECTOLENS" "$action")" = "$k" ] || bad=1
+-                no_keys "$(keys "$SPECTACLE" "$action")" || bad=1
++                :
+             done < "$moved"
+             if [ "$bad" = 1 ]; then
+                 # what this run moved goes back to Spectacle; the record stays only if an earlier

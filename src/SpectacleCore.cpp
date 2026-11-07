@@ -7,6 +7,8 @@
  */
 
 #include "SpectacleCore.h"
+#include "StartupClock.h"
+#include "Gui/CaptureTools.h"
 #include "CaptureModeModel.h"
 #include "CommandLineOptions.h"
 #include "Config.h"
@@ -15,6 +17,10 @@
 #include "Gui/CaptureWindow.h"
 #include "Gui/Selection.h"
 #include "Gui/SelectionEditor.h"
+#include "Gui/FrameHistory.h"
+#include "Platforms/WindowPicker.h"
+#include <QPainter>
+#include "Platforms/ImagePlatformKWin.h"
 #include "Gui/SpectacleWindow.h"
 #include "Gui/InlineMessageModel.h"
 #include "ImageMetaData.h"
@@ -25,6 +31,7 @@
 #include "Platforms/PlatformLoader.h"
 #include "RecordingModeModel.h"
 #include "ShortcutActions.h"
+#include "TestScript.h"
 #include "PlasmaVersion.h"
 // generated
 #include "settings.h"
@@ -49,7 +56,11 @@
 #include <QCommandLineParser>
 #include <QDBusConnection>
 #include <QDBusMessage>
+#include <QCursor>
+#include <QDateTime>
+#include <QMetaEnum>
 #include <QDir>
+#include <QStandardPaths>
 #include <QDrag>
 #include <QKeySequence>
 #include <QMetaObject>
@@ -130,20 +141,58 @@ SpectacleCore::SpectacleCore(QObject *parent)
 
     m_imagePlatform = loadImagePlatform();
     m_videoPlatform = loadVideoPlatform();
+    // Ectolens: start learning where windows are now, so pointing at one works
+    // the moment the overlay opens.
+    if (KWindowSystem::isPlatformWayland()) {
+        WindowPicker::instance();
+    }
     auto imagePlatform = m_imagePlatform.get();
     m_annotationDocument = std::make_unique<AnnotationDocument>();
 
     // essential connections
+    // Ectolens: an agent's capture waiting on Hide Private Info's reading of its frame goes when the
+    // reading ends with its blurs on. When the text reader did not start, the overlay's note says
+    // so and the person decides again (a second Send sends it as it is, as the dialog allows).
+    connect(CaptureTools::instance(), &CaptureTools::hidingPrivateInfoChanged, this, [this] {
+        auto tools = CaptureTools::instance();
+        if (!m_agentSendWhenRead || tools->hidingPrivateInfo()) {
+            return;
+        }
+        m_agentSendWhenRead = false;
+        if (m_agent && tools->privateInfoReaderRan()) {
+            // after this signal has reached everyone: sending closes the overlay, whose items listen to it too
+            QTimer::singleShot(0, this, [this] {
+                if (m_agent) {
+                    SelectionEditor::instance()->acceptSelection();
+                }
+            });
+        }
+    });
     connect(SelectionEditor::instance(), &SelectionEditor::accepted, this, [this](const QRectF &rect, const ExportManager::Actions &actions) {
         m_returnToViewer = m_startMode == StartMode::Gui;
         if (m_videoMode) {
+            // Ectolens: a recording follows After Capture too: the window opens after it only
+            // with Open with › Ectolens checked, or when the window was open before.
+            m_captureTitle = captureTitle(rect);
+            m_afterCapture = {};
+            m_afterCapture.pending = true;
+            m_afterCapture.open = Settings::afterCaptureOpen();
+            m_afterCapture.openApp = Settings::afterCaptureOpenApp();
+            m_afterCapture.showInFolder = Settings::afterCaptureShowInFolder() && Settings::autoSaveImage();
+            m_afterCapture.share = Settings::afterCaptureShare() && !Settings::afterCaptureShareTarget().isEmpty();
+            m_afterCapture.shareTarget = Settings::afterCaptureShareTarget();
+            if (m_startMode == StartMode::Gui) {
+                m_returnToViewer = m_captureFromWindow || (m_afterCapture.open && m_afterCapture.openApp.isEmpty());
+            }
             const auto captureWindows = CaptureWindow::instances();
             SpectacleWindow::setVisibilityForAll(QWindow::Hidden);
             for (auto captureWindow : captureWindows) {
                 // Destroy the QPlatformWindow so we can change the window behavior.
                 // The QPlatformWindow will be recreated when the window is shown again.
                 captureWindow->destroy();
-                captureWindow->setFlag(Qt::WindowTransparentForInput, true);
+                // Ectolens: clicks go through to the apps being recorded everywhere
+                // except the recording toolbar, which sets its own input area.
+                captureWindow->setInputRect({});
                 captureWindow->setFlag(Qt::WindowStaysOnTopHint, true);
                 if (auto window = LayerShellQt::Window::get(captureWindow)) {
                     using namespace LayerShellQt;
@@ -165,13 +214,80 @@ SpectacleCore::SpectacleCore(QObject *parent)
             ExportManager::instance()->updateTimestamp();
             const auto &output = m_outputUrl.isLocalFile() ? videoOutputUrl() : QUrl();
             static const auto rectKey = u"rect"_s;
-            m_videoPlatform->startRecording(output, VideoPlatform::Region, {{rectKey, rect}}, includePointer);
+            // Ectolens: a frame that is still exactly a window taken by clicking it
+            // records that window, so the recording follows it if it moves.
+            if (const QString uuid = SelectionEditor::instance()->frameWindowUuid(); !uuid.isEmpty()
+                && (m_videoPlatform->supportedRecordingModes() & VideoPlatform::Window)) {
+                m_videoPlatform->startRecording(output,
+                                                VideoPlatform::Window,
+                                                {{u"uuid"_s, uuid}, {u"x"_s, rect.x()}, {u"y"_s, rect.y()}, {u"width"_s, rect.width()}, {u"height"_s, rect.height()}},
+                                                includePointer);
+            } else {
+                m_videoPlatform->startRecording(output, VideoPlatform::Region, {{rectKey, rect}}, includePointer);
+            }
+            if (m_agent && m_agent->kind == u"record"_s) {
+                // an agent's recording: saved where recordings go, its file given to the agent at
+                // record_stop; the window doesn't open for it
+                m_afterCapture = {};
+                m_returnToViewer = false;
+                m_agentRecording = true;
+                m_agentLastRecording.clear();
+                m_agent.reset();
+                answerAgent({{u"status"_s, u"recording"_s}});
+                Q_EMIT agentChanged();
+            }
+        } else if (m_agent && m_agent->kind == u"record"_s) {
+            // Enter on a recording an agent asked for: Record, as its Send button does
+            recordSelection();
+        } else if (m_agent && m_agent->kind == u"capture"_s) {
+            // Ectolens: the person pressed Send (or Enter) on a capture an agent asked for: it
+            // goes to the agent alone, with no After Capture. A frame moved or grown past what
+            // Hide Private Info read (Adjust First) is read first, and goes once its blurs are on.
+            auto tools = CaptureTools::instance();
+            if (m_agentBlur && !tools->privateInfoReadFor(rect)) {
+                tools->hidePrivateInfo(rect);
+                if (tools->hidingPrivateInfo()) {
+                    m_agentSendWhenRead = true;
+                    TestScript::report(u"ECTOLENS-AGENT reading"_s);
+                    return;
+                }
+                // nothing there to read (no picture under the frame): it goes as it is
+            }
+            sendToAgent(rect);
         } else {
+            // Ectolens: Enter and Capture run the After Capture list; the other keys
+            // (Ctrl+C, Ctrl+S, Ctrl+Shift+S) and Extract Text do only what they say.
+            const bool afterCapture = !(actions & ExportManager::AnyAction) && !m_ocrExportInProgress;
+            if (afterCapture && Settings::afterCaptureShare() && Settings::afterCaptureShareTarget().isEmpty() && !m_shareAsked) {
+                // Share asks where each time: the overlay shows the services over Capture first.
+                Q_EMIT shareTargetNeeded();
+                return;
+            }
+            m_captureTitle = captureTitle(rect);
+            m_afterCapture = {};
+            if (afterCapture) {
+                m_afterCapture.pending = true;
+                m_afterCapture.open = Settings::afterCaptureOpen();
+                m_afterCapture.openApp = Settings::afterCaptureOpenApp();
+                m_afterCapture.showInFolder = Settings::afterCaptureShowInFolder() && Settings::autoSaveImage();
+                m_afterCapture.share = Settings::afterCaptureShare() && (!m_shareAsked || !m_shareOnce.isEmpty());
+                m_afterCapture.shareTarget = m_shareAsked ? m_shareOnce : Settings::afterCaptureShareTarget();
+            }
+            m_shareAsked = false;
+            m_shareOnce.clear();
+            CaptureTools::instance()->revertResizedWindow();
             SpectacleWindow::setVisibilityForAll(QWindow::Hidden);
             deleteWindows();
             m_annotationDocument->cropCanvas(rect);
             syncExportImage();
             auto exportActions = actions & ExportManager::AnyAction ? actions : autoExportActions();
+            bool ocrRun = false;
+            if (afterCapture && m_startMode != StartMode::Background) {
+                // After a Print Screen capture the overlay closes instead of opening the
+                // Ectolens window, unless Open with › Ectolens is checked or the window was
+                // open when the capture started (design proposal 2).
+                m_returnToViewer = m_captureFromWindow || (m_afterCapture.open && m_afterCapture.openApp.isEmpty());
+            }
             if (m_ocrExportInProgress) {
                 if (Settings::closeAfterOcr()) {
                     exportActions.setFlag(ExportManager::Action::Save, false);
@@ -180,6 +296,7 @@ SpectacleCore::SpectacleCore(QObject *parent)
                 }
                 exportActions.setFlag(ExportManager::Action::CopyImage, false);
                 m_ocrExportInProgress = false;
+                ocrRun = true;
             }
             const bool willQuit = exportActions.testAnyFlags(ExportManager::AnyAction) //
                 && exportActions.testFlag(ExportManager::UserAction) //
@@ -188,12 +305,18 @@ SpectacleCore::SpectacleCore(QObject *parent)
             showViewerIfGuiMode();
             SpectacleWindow::setTitleForAll(SpectacleWindow::Unsaved);
             ExportManager::instance()->scanQRCode();
-            ExportManager::instance()->exportImage(exportActions, outputUrl());
+            // Extract Text speaks in its own notification: with nothing left to copy or save,
+            // don't export (that would send a "not copied or saved" one too)
+            if (!ocrRun || exportActions & ExportManager::AnyAction) {
+                ExportManager::instance()->exportImage(exportActions, outputUrl());
+            }
         }
     });
 
     connect(imagePlatform, &ImagePlatform::newScreenshotTaken, this, [this](const QImage &image){
+        StartupClock::finish(u"picture-without-overlay"_s);
         InlineMessageModel::instance()->clear();
+        CaptureTools::instance()->setSavedUrl({});
         m_editExistingUrl.clear();
         m_cliOptions[CommandLineOptions::EditExisting] = false;
         m_annotationDocument->clearAnnotations();
@@ -201,6 +324,26 @@ SpectacleCore::SpectacleCore(QObject *parent)
         setExportImage(image);
         ExportManager::instance()->updateTimestamp();
         m_returnToViewer = true;
+        // Ectolens: a capture without the overlay (full screen, active window) runs After Capture too.
+        m_afterCapture = {};
+        if (m_startMode != StartMode::Background && !m_apiCapture) {
+            const QSize px = image.size();
+            QString what = CaptureModeModel::captureModeLabel(toCaptureMode(m_lastGrabMode));
+            const QString windowTitle = ImageMetaData::windowTitle(image);
+            if (!windowTitle.isEmpty()) {
+                const auto parts = windowTitle.split(u" — "_s);
+                what = parts.last().trimmed();
+            }
+            m_captureTitle = i18nc("@title %1 what was taken, %2×%3 its size", "%1 %2×%3", what, QString::number(px.width()), QString::number(px.height()));
+            m_afterCapture.pending = true;
+            m_afterCapture.open = Settings::afterCaptureOpen();
+            m_afterCapture.openApp = Settings::afterCaptureOpenApp();
+            m_afterCapture.showInFolder = Settings::afterCaptureShowInFolder() && Settings::autoSaveImage();
+            m_afterCapture.share = Settings::afterCaptureShare() && !Settings::afterCaptureShareTarget().isEmpty();
+            m_afterCapture.shareTarget = Settings::afterCaptureShareTarget();
+            m_returnToViewer = m_captureFromWindow || (m_afterCapture.open && m_afterCapture.openApp.isEmpty())
+                || (m_startMode == StartMode::Gui && !m_afterCapture.pending);
+        }
         showViewerIfGuiMode();
         SpectacleWindow::setTitleForAll(SpectacleWindow::Unsaved);
         ExportManager::instance()->scanQRCode();
@@ -208,7 +351,10 @@ SpectacleCore::SpectacleCore(QObject *parent)
         setVideoMode(false);
     });
     connect(imagePlatform, &ImagePlatform::newCroppableScreenshotTaken, this, [this](const QImage &image) {
+        StartupClock::mark(u"picture"_s);
+        m_retaking = false;
         InlineMessageModel::instance()->clear();
+        CaptureTools::instance()->setSavedUrl({});
         m_editExistingUrl.clear();
         m_cliOptions[CommandLineOptions::EditExisting] = false;
         setVideoMode(false);
@@ -217,11 +363,29 @@ SpectacleCore::SpectacleCore(QObject *parent)
         setExportImage(image);
         ExportManager::instance()->updateTimestamp();
         initCaptureWindows(CaptureWindow::Image);
+        StartupClock::mark(u"windows"_s);
         SpectacleWindow::setTitleForAll(SpectacleWindow::Unsaved);
         SpectacleWindow::setVisibilityForAll(QWindow::FullScreen);
+        StartupClock::mark(u"shown"_s);
+        // Ectolens: Open QR Code appears when the frame holds a code.
+        CaptureTools::instance()->scanFrozenPicture();
+        StartupClock::mark(u"qr-scan"_s);
+        // the overlay is drawn once every screen's window has swapped its first frame
+        auto waiting = std::make_shared<int>(int(m_captureWindows.size()));
+        for (const auto &window : m_captureWindows) {
+            connect(window.get(), &QQuickWindow::frameSwapped, this, [waiting] {
+                if (--*waiting == 0) {
+                    StartupClock::overlayDrawn();
+                }
+            }, Qt::SingleShotConnection);
+        }
         // SelectionEditor::reset has to be delayed until after all the DPRs are correct on Wayland.
         connect(m_captureWindows.front().get(), &CaptureWindow::allExposed, //
                 SelectionEditor::instance(), &SelectionEditor::reset, Qt::SingleShotConnection);
+        if (m_agent) {
+            // an agent's frame, once the reset above has cleared the overlay's (connected after it)
+            connect(m_captureWindows.front().get(), &CaptureWindow::allExposed, this, &SpectacleCore::frameForAgent, Qt::SingleShotConnection);
+        }
     });
 
     // The behavior happens to be very similar right now, so we use a shared base function
@@ -270,11 +434,14 @@ SpectacleCore::SpectacleCore(QObject *parent)
         }
         }
     };
-    connect(imagePlatform, &ImagePlatform::newScreenshotFailed, this, [onScreenshotOrRecordingFailed](const QString message) {
+    connect(imagePlatform, &ImagePlatform::newScreenshotFailed, this, [this, onScreenshotOrRecordingFailed](const QString message) {
+        m_retaking = false;
+        CaptureTools::instance()->revertResizedWindow();
         auto uiMessage = i18nc("@info", "An error occurred while taking a screenshot.");
         onScreenshotOrRecordingFailed(message, uiMessage, &SpectacleCore::dbusScreenshotFailed);
     });
     connect(imagePlatform, &ImagePlatform::newScreenshotCanceled, this, [this]() {
+        CaptureTools::instance()->revertResizedWindow();
         if (m_startMode != StartMode::Gui || !m_returnToViewer || isGuiNull()) {
             Q_EMIT allDone();
             return;
@@ -292,6 +459,24 @@ SpectacleCore::SpectacleCore(QObject *parent)
 
     auto videoPlatform = m_videoPlatform.get();
     connect(videoPlatform, &VideoPlatform::recordingStateChanged, this, [this, videoPlatform](VideoPlatform::RecordingState state) {
+        // for the off-screen tests: each state with the wall clock, so a screenshot can be placed
+        // in it (the input run shoots the screen between Stop and the saved file)
+        TestScript::report(u"ECTOLENS-REC %1 %2"_s.arg(QString::fromLatin1(QMetaEnum::fromType<VideoPlatform::RecordingState>().valueToKey(int(state))))
+                               .arg(QDateTime::currentMSecsSinceEpoch()));
+        // Ectolens: pausing and resuming keep the tray icon and the recording
+        // overlay; only the tooltip says which it is.
+        if (state == VideoPlatform::RecordingState::Paused) {
+            if (s_systemTrayIcon) {
+                s_systemTrayIcon->setToolTipTitle(i18nc("@info:tooltip title for paused recording tray icon", "Ectolens is Paused"));
+            }
+            return;
+        }
+        if (state == VideoPlatform::RecordingState::Recording && s_systemTrayIcon) {
+            s_systemTrayIcon->setToolTipTitle(videoPlatform->isRecordingAudio()
+                                                  ? i18nc("@info:tooltip title for recording tray icon", "Ectolens is Recording with Sound")
+                                                  : i18nc("@info:tooltip title for recording tray icon", "Ectolens is Recording"));
+            return;
+        }
         if (state == VideoPlatform::RecordingState::Recording) {
             static const auto recordingIcon = u":/icons/256-status-media-recording.webp"_s;
             static const auto recordingStartedIcon = u":/icons/256-status-media-recording-started.webp"_s;
@@ -300,14 +485,14 @@ SpectacleCore::SpectacleCore(QObject *parent)
             s_systemTrayIcon->setStatus(KStatusNotifierItem::Active);
             s_systemTrayIcon->setCategory(KStatusNotifierItem::SystemServices);
             s_systemTrayIcon->setToolTipTitle(videoPlatform->isRecordingAudio()
-                                                  ? i18nc("@info:tooltip title for recording tray icon", "Spectacle is Recording with Sound")
-                                                  : i18nc("@info:tooltip title for recording tray icon", "Spectacle is Recording"));
+                                                  ? i18nc("@info:tooltip title for recording tray icon", "Ectolens is Recording with Sound")
+                                                  : i18nc("@info:tooltip title for recording tray icon", "Ectolens is Recording"));
             s_systemTrayIcon->setStandardActionsEnabled(false);
             connect(s_systemTrayIcon.get(), &KStatusNotifierItem::activateRequested, this, [] {
                 SpectacleCore::instance()->finishRecording();
             });
-            const auto messageTitle = videoPlatform->isRecordingAudio() ? i18nc("recording notification title", "Spectacle is Recording with Sound")
-                                                                        : i18nc("recording notification title", "Spectacle is Recording");
+            const auto messageTitle = videoPlatform->isRecordingAudio() ? i18nc("recording notification title", "Ectolens is Recording with Sound")
+                                                                        : i18nc("recording notification title", "Ectolens is Recording");
             auto getSimpleDefaultShortcut = [] {
                 const auto shortcuts = KGlobalAccel::self()->shortcut(ShortcutActions::self()->recordRegionAction());
                 if (shortcuts.contains(QKeySequence{Qt::META | Qt::Key_R})) {
@@ -351,7 +536,7 @@ SpectacleCore::SpectacleCore(QObject *parent)
             notification->sendEvent();
             if (!QMovie::supportedFormats().contains("webp"_ba)) {
                 const auto messageTitle = i18nc("missing webp support notification title", "WebP support is missing.");
-                const auto messageBody = i18nc("missing webp support notification message", "Please install Qt Image Formats to get animated system tray icons for Spectacle, and then report this packaging issue to your distributor.");
+                const auto messageBody = i18nc("missing webp support notification message", "Please install Qt Image Formats to get animated system tray icons for Ectolens, and then report this packaging issue to your distributor.");
                 s_systemTrayIcon->showMessage(messageTitle, messageBody, u"dialog-warning"_s, 4000);
                 s_systemTrayIcon->setIconByName(u"media-record"_s);
                 return;
@@ -387,10 +572,10 @@ SpectacleCore::SpectacleCore(QObject *parent)
             });
             startedAnimation->start();
         } else if (state == VideoPlatform::RecordingState::Rendering && s_systemTrayIcon) {
-            const auto messageTitle = i18nc("recording notification title", "Spectacle is Finishing the Recording");
+            const auto messageTitle = i18nc("recording notification title", "Ectolens is Finishing the Recording");
             const auto messageBody = i18nc("recording notification message", "Please wait");
             s_systemTrayIcon->setToolTipTitle(i18nc("@info:tooltip title for rendering tray icon", //
-                                                    "Spectacle is Finishing the Recording"));
+                                                    "Ectolens is Finishing the Recording"));
             auto subtitle = i18nc("@info:tooltip subtitle for rendering tray icon", //
                                   "Time recorded: %1\n" //
                                   "Click to stop rendering early (this will lose data)",
@@ -423,11 +608,13 @@ SpectacleCore::SpectacleCore(QObject *parent)
         s_systemTrayIcon->setToolTipSubTitle(subtitle);
     });
     connect(videoPlatform, &VideoPlatform::recordingSaved, this, [this](const QUrl &fileUrl) {
+        CaptureTools::instance()->revertResizedWindow();
         // Always try to save. Needed to move recordings out of temp dir.
         ExportManager::instance()->exportVideo(autoExportActions() | ExportManager::Save, fileUrl, videoOutputUrl());
         m_recordingEventLoopLocker.reset();
     });
     connect(videoPlatform, &VideoPlatform::recordingCanceled, this, [this] {
+        CaptureTools::instance()->revertResizedWindow();
         m_recordingEventLoopLocker.reset();
         if (m_startMode != StartMode::Gui || !m_returnToViewer || isGuiNull()) {
             Q_EMIT allDone();
@@ -444,6 +631,15 @@ SpectacleCore::SpectacleCore(QObject *parent)
         }
     });
     connect(videoPlatform, &VideoPlatform::recordingFailed, this, [this, onScreenshotOrRecordingFailed](const QString &message){
+        if (m_agentRecording) {
+            m_agentRecording = false;
+            auto stop = std::move(m_agentStopReply);
+            m_agentStopReply = nullptr;
+            if (stop) {
+                stop({{u"status"_s, u"error"_s}, {u"message"_s, message}});
+            }
+        }
+        CaptureTools::instance()->revertResizedWindow();
         m_recordingEventLoopLocker.reset();
         auto uiMessage = i18nc("@info", "An error occurred while attempting to record the screen.");
         onScreenshotOrRecordingFailed(message, uiMessage, &SpectacleCore::dbusRecordingFailed);
@@ -463,7 +659,9 @@ SpectacleCore::SpectacleCore(QObject *parent)
         if (actions & ExportManager::AnySave) {
             m_editExistingUrl = url;
             m_outputUrl.clear();
+            CaptureTools::instance()->setSavedUrl(url);
         }
+        runAfterCapture(actions, url);
         if (actions & ExportManager::UserAction && Settings::quitAfterSaveCopyExport()) {
             deleteWindows();
         }
@@ -490,30 +688,43 @@ SpectacleCore::SpectacleCore(QObject *parent)
             return;
         }
 
+        // Ectolens: messages in the window's strips say it plainly (design proposal 2, gap 4).
         if (actions & ExportManager::AnySave) {
             SpectacleWindow::setTitleForAll(SpectacleWindow::Saved, url.fileName());
+            const bool inScreenshots = url.adjusted(QUrl::RemoveFilename | QUrl::StripTrailingSlash)
+                == Settings::imageSaveLocation().adjusted(QUrl::RemoveFilename | QUrl::StripTrailingSlash);
+            const QString folder = inScreenshots ? i18nc("@info the folder captures save to", "Screenshots")
+                                                 : url.adjusted(QUrl::RemoveFilename | QUrl::StripTrailingSlash).toLocalFile();
+            QString text;
             if (actions & ExportManager::CopyImage) {
-                auto text =
-                    xi18nc("@info", "The screenshot was copied to the clipboard and saved as <link url=\"%1\">%2</link>", url.toString(), url.fileName());
-                InlineMessageModel::instance()->push(InlineMessageModel::Saved, text, url);
+                text = i18nc("@info %1 file name, %2 folder", "Copied to the clipboard and saved as <b>%1</b> in %2", url.fileName().toHtmlEscaped(), folder.toHtmlEscaped());
             } else if (actions & ExportManager::CopyPath) {
-                auto text = xi18nc("@info",
-                                   "The screenshot has been saved as <link url=\"%1\">%2</link> and its location has been copied to clipboard",
-                                   url.toString(),
-                                   url.fileName());
-                InlineMessageModel::instance()->push(InlineMessageModel::Saved, text, url);
+                text = i18nc("@info %1 file name, %2 folder", "Saved as <b>%1</b> in %2. Its path is on the clipboard", url.fileName().toHtmlEscaped(), folder.toHtmlEscaped());
             } else {
-                auto text = xi18nc("@info", "The screenshot was saved as <link url=\"%1\">%2</link>", url.toString(), url.fileName());
-                InlineMessageModel::instance()->push(InlineMessageModel::Saved, text, url);
+                text = i18nc("@info %1 file name, %2 folder", "Saved as <b>%1</b> in %2", url.fileName().toHtmlEscaped(), folder.toHtmlEscaped());
             }
+            InlineMessageModel::instance()->push(InlineMessageModel::Saved, text, url);
         } else if (actions & ExportManager::CopyImage) {
-            auto text = i18nc("@info", "The screenshot has been copied to the clipboard.");
-            InlineMessageModel::instance()->push(InlineMessageModel::Copied, text);
+            InlineMessageModel::instance()->push(InlineMessageModel::Copied, i18nc("@info", "Copied to the clipboard"));
+        } else if (actions & ExportManager::SaveDeclined) {
+            InlineMessageModel::instance()->push(InlineMessageModel::Copied, i18nc("@info", "Not saved"));
         }
     };
     connect(exportManager, &ExportManager::imageExported, this, onImageExported);
     auto onVideoExported = [this](const ExportManager::Actions &actions, const QUrl &url) {
+        if (m_agentRecording) {
+            // an agent's recording is written: its file for record_stop
+            m_agentRecording = false;
+            m_agentLastRecording = url.toLocalFile();
+            auto stop = std::move(m_agentStopReply);
+            m_agentStopReply = nullptr;
+            if (stop) {
+                stop({{u"status"_s, u"saved"_s}, {u"path"_s, m_agentLastRecording}});
+                m_agentLastRecording.clear();
+            }
+        }
         setCurrentVideo(url);
+        runAfterCapture(actions, url);
 
         if (actions & ExportManager::UserAction && Settings::quitAfterSaveCopyExport()) {
             deleteWindows();
@@ -537,19 +748,16 @@ SpectacleCore::SpectacleCore(QObject *parent)
 
         if (actions & ExportManager::AnySave) {
             SpectacleWindow::setTitleForAll(SpectacleWindow::Saved, url.fileName());
-            if (actions & ExportManager::CopyPath) {
-                auto text = xi18nc("@info",
-                                   "The video has been saved as <link url=\"%1\">%2</link> and its location has been copied to clipboard",
-                                   url.toString(),
-                                   url.fileName());
-                InlineMessageModel::instance()->push(InlineMessageModel::Saved, text, url);
-            } else {
-                auto text = xi18nc("@info", "The video was saved as <link url=\"%1\">%2</link>", url.toString(), url.fileName());
-                InlineMessageModel::instance()->push(InlineMessageModel::Saved, text, url);
-            }
+            const bool inVideos = url.adjusted(QUrl::RemoveFilename | QUrl::StripTrailingSlash)
+                == Settings::videoSaveLocation().adjusted(QUrl::RemoveFilename | QUrl::StripTrailingSlash);
+            const QString folder = inVideos ? i18nc("@info the folder recordings save to", "Screencasts")
+                                            : url.adjusted(QUrl::RemoveFilename | QUrl::StripTrailingSlash).toLocalFile();
+            const QString text = actions & ExportManager::CopyPath
+                ? i18nc("@info %1 file name, %2 folder", "Saved as <b>%1</b> in %2. Its path is on the clipboard", url.fileName().toHtmlEscaped(), folder.toHtmlEscaped())
+                : i18nc("@info %1 file name, %2 folder", "Saved as <b>%1</b> in %2", url.fileName().toHtmlEscaped(), folder.toHtmlEscaped());
+            InlineMessageModel::instance()->push(InlineMessageModel::Saved, text, url);
         } else if (actions & ExportManager::CopyPath) {
-            auto text = i18nc("@info", "The video location has been copied to the clipboard.");
-            InlineMessageModel::instance()->push(InlineMessageModel::Copied, text);
+            InlineMessageModel::instance()->push(InlineMessageModel::Copied, i18nc("@info", "Copied the recording's path"));
         }
     };
     connect(exportManager, &ExportManager::videoExported, this, onVideoExported);
@@ -561,16 +769,14 @@ SpectacleCore::SpectacleCore(QObject *parent)
         }
         // Thanks to: https://stackoverflow.com/questions/1500260/detect-urls-in-text-with-javascript
         using QRE = QRegularExpression;
-        static const QRE urlRegex(u"(\\b(https?|ftp|file)://[-A-Z0-9+&@#/%?=~_|!:,.;]*[-A-Z0-9+&@#/%=~_|])"_s, QRE::CaseInsensitiveOption);
-        static const auto linkifier = u"<a href=\"\\1\">\\1</a>"_s;
         auto text = [](const QVariant &result) -> QString {
             if (result.typeId() == QMetaType::QString) {
                 // Not using xi18nc because it doesn't work with the link replacement logic.
                 // Also see https://invent.kde.org/graphics/spectacle/-/merge_requests/432#note_1111125
-                auto text = i18nc("@info", //
-                                  "Code found: %1",
-                                  result.toString().toHtmlEscaped().replace(urlRegex, linkifier));
-                return u"<html>" % text % u"</html>";
+                auto text = i18nc("@info %1 what a QR code says", //
+                                  "Found a QR code: <b>%1</b>",
+                                  result.toString().toHtmlEscaped());
+                return text;
             }
             return i18nc("@info", "Found QR code with binary content.");
         }(result);
@@ -589,7 +795,10 @@ SpectacleCore::SpectacleCore(QObject *parent)
             return;
         }
 
-        InlineMessageModel::instance()->push(InlineMessageModel::Copied, i18nc("@info", "Text extraction completed"));
+        // Ectolens: say how much was read, and keep the text for the strip's Show Text.
+        const int lines = text.trimmed().count(u'\n') + 1;
+        InlineMessageModel::instance()->push(InlineMessageModel::Extracted,
+                                             i18ncp("@info", "Copied the text: %1 line", "Copied the text: %1 lines", lines), text);
 
         // ensure program stays alive until the notification finishes.
         if (!m_eventLoopLocker) {
@@ -892,6 +1101,9 @@ void SpectacleCore::activate(const QStringList &arguments, const QString &workin
         finishRecording();
         return;
     }
+    if (closeOverlayOnSecondPress()) {
+        return;
+    }
     if (!workingDirectory.isEmpty()) {
         QDir::setCurrent(workingDirectory);
     }
@@ -1167,6 +1379,9 @@ void SpectacleCore::takeNewScreenshot(ImagePlatform::GrabMode grabMode, int time
 
     m_delayAnimation->stop();
 
+    m_captureFromWindow = ViewerWindow::instance() != nullptr;
+    m_afterCapture = {};
+    m_retaking = false;
     m_lastGrabMode = grabMode;
     m_lastIncludePointer = includePointer;
     m_lastIncludeDecorations = includeDecorations;
@@ -1215,8 +1430,255 @@ void SpectacleCore::takeNewScreenshot(ImagePlatform::GrabMode grabMode, int time
     SpectacleWindow::setVisibilityForAll(QWindow::Minimized);
 }
 
+bool SpectacleCore::closeOverlayOnSecondPress()
+{
+    // Ectolens: Print Screen, or any capture shortcut, pressed while the
+    // overlay is up closes it, as Esc does: the key that opens a capture also closes it. While
+    // recording it stops and saves, as before. (Spectacle took a new screenshot instead.)
+    if (CaptureWindow::instances().isEmpty() || m_videoPlatform->isRecording()) {
+        return false;
+    }
+    TestScript::report(u"ECTOLENS-CLOSED-BY-SECOND-PRESS"_s);
+    cancelScreenshot();
+    return true;
+}
+
+// ── Ectolens: AI agents (AgentService, ectolens-mcp) ──
+
+void SpectacleCore::agentCapture(const AgentRequest &request, AgentReply reply)
+{
+    auto fail = [&reply](const QString &status, const QString &message = {}) {
+        QJsonObject result{{u"status"_s, status}};
+        if (!message.isEmpty()) {
+            result[u"message"_s] = message;
+        }
+        reply(result);
+    };
+    if (!Settings::agentAccess()) {
+        fail(u"off"_s);
+        return;
+    }
+    if (m_agent || m_agentRecording || m_videoPlatform->isRecording() || !CaptureWindow::instances().isEmpty() || ViewerWindow::instance()) {
+        fail(u"busy"_s, i18nc("@info", "Ectolens is already open for a capture, a recording or the Ectolens window."));
+        return;
+    }
+    if (request.target == u"window"_s && !WindowPicker::instance()->window(request.windowId)) {
+        fail(u"error"_s, i18nc("@info", "No window has that id; list_windows gives the ids."));
+        return;
+    }
+    if (request.target == u"area"_s && request.area.isEmpty()) {
+        fail(u"error"_s, i18nc("@info", "The area needs a width and a height."));
+        return;
+    }
+    if (m_agentIdle) {
+        m_agentIdle->stop();
+    }
+    m_agent = request;
+    m_agentAdjusting = false;
+    m_agentSendWhenRead = false;
+    // each request starts as Settings › Model Context Protocol (MCP) says; the dialog's box
+    // changes this one only
+    m_agentBlur = Settings::agentHidePrivateInfo();
+    m_agentReply = std::move(reply);
+    Q_EMIT agentChanged();
+    TestScript::report(u"ECTOLENS-AGENT asking %1 %2"_s.arg(request.kind, request.target));
+    takeNewScreenshot(CaptureModeModel::RectangularRegion, 0, false, false);
+}
+
+void SpectacleCore::frameForAgent()
+{
+    if (!m_agent) {
+        return;
+    }
+    auto editor = SelectionEditor::instance();
+    const auto &r = *m_agent;
+    QString uuid;
+    if (r.target == u"window"_s) {
+        uuid = r.windowId;
+    } else if (r.target == u"active_window"_s) {
+        for (const auto &w : WindowPicker::instance()->visibleWindows()) {
+            if (w.active) {
+                uuid = w.uuid;
+                break;
+            }
+        }
+    }
+    if (!uuid.isEmpty() && editor->pickWindow(uuid)) {
+        // framed on the window, at its place now
+    } else if (r.target == u"area"_s) {
+        editor->selection()->setRect(r.area);
+    } else {
+        // the whole screen the person is looking at (the pointer's)
+        QScreen *screen = QGuiApplication::screenAt(QCursor::pos());
+        if (!screen) {
+            screen = QGuiApplication::primaryScreen();
+        }
+        editor->selection()->setRect(Geometry::mapFromPlatformRect(screen->geometry(), screen->devicePixelRatio()));
+    }
+    if (m_agentBlur && r.kind == u"capture"_s) {
+        // blurred before the person decides, so they see what the agent would get. Not for a
+        // recording: it is made from the live screen, which the overlay's blurs never reach, and
+        // its dialog says so.
+        CaptureTools::instance()->hidePrivateInfo(editor->selection()->rectF());
+    }
+    TestScript::report(u"ECTOLENS-AGENT framed"_s);
+}
+
+void SpectacleCore::sendToAgent(const QRectF &rect)
+{
+    const AgentRequest request = *m_agent;
+    const bool blur = m_agentBlur;
+    CaptureTools::instance()->revertResizedWindow();
+    SpectacleWindow::setVisibilityForAll(QWindow::Hidden);
+    deleteWindows();
+    m_annotationDocument->cropCanvas(rect);
+    syncExportImage();
+    const QImage image = ExportManager::instance()->image();
+    // a folder only this user can read, emptied when the session ends (the runtime folder)
+    QDir dir(QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation));
+    dir.mkpath(u"ectolens-agent"_s);
+    dir.cd(u"ectolens-agent"_s);
+    QFile::setPermissions(dir.absolutePath(), QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
+    const QString path = dir.filePath(u"capture-%1.png"_s.arg(QDateTime::currentDateTime().toString(u"yyyyMMdd-HHmmss-zzz"_s)));
+    QJsonObject result;
+    if (image.isNull() || !image.save(path, "PNG")) {
+        result = {{u"status"_s, u"error"_s}, {u"message"_s, i18nc("@info", "The picture could not be saved for the agent.")}};
+    } else {
+        result = {{u"status"_s, u"sent"_s}, {u"path"_s, path}, {u"width"_s, image.width()}, {u"height"_s, image.height()}};
+        if (request.wantText) {
+            result[u"text"_s] = CaptureTools::readText(image, blur);
+        }
+    }
+    m_agent.reset();
+    answerAgent(result);
+    Q_EMIT agentChanged();
+    TestScript::report(u"ECTOLENS-AGENT sent %1"_s.arg(path));
+    agentIdle();
+}
+
+void SpectacleCore::agentIdle()
+{
+    if (m_startMode == StartMode::Gui) {
+        return;
+    }
+    if (!m_agentIdle) {
+        m_agentIdle = new QTimer(this);
+        m_agentIdle->setSingleShot(true);
+        m_agentIdle->setInterval(2 * 60 * 1000);
+        connect(m_agentIdle, &QTimer::timeout, this, [this] {
+            if (!m_agent && !m_agentRecording && !m_videoPlatform->isRecording() && CaptureWindow::instances().isEmpty() && !ViewerWindow::instance()) {
+                Q_EMIT allDone();
+            }
+        });
+    }
+    m_agentIdle->start();
+}
+
+void SpectacleCore::agentRecordStop(AgentReply reply)
+{
+    if (m_agentRecording && m_videoPlatform->isRecording()) {
+        m_agentStopReply = std::move(reply);
+        finishRecording();
+    } else if (!m_agentLastRecording.isEmpty()) {
+        // the person stopped it already
+        reply({{u"status"_s, u"saved"_s}, {u"path"_s, m_agentLastRecording}});
+        m_agentLastRecording.clear();
+    } else {
+        reply({{u"status"_s, u"not_recording"_s}});
+    }
+}
+
+void SpectacleCore::answerAgent(const QJsonObject &result)
+{
+    auto reply = std::move(m_agentReply);
+    m_agentReply = nullptr;
+    if (reply) {
+        reply(result);
+    }
+}
+
+bool SpectacleCore::agentAsking() const
+{
+    return m_agent.has_value();
+}
+
+bool SpectacleCore::agentBlur() const
+{
+    return m_agentBlur;
+}
+
+void SpectacleCore::setAgentBlur(bool blur)
+{
+    // a recording can't be blurred: it is made from the live screen
+    if (!m_agent || m_agent->kind != u"capture"_s || blur == m_agentBlur) {
+        return;
+    }
+    m_agentBlur = blur;
+    auto tools = CaptureTools::instance();
+    if (blur) {
+        tools->putBackPrivateInfoBlurs(SelectionEditor::instance()->selection()->rectF());
+    } else {
+        m_agentSendWhenRead = false;
+        tools->takeOffPrivateInfoBlurs();
+    }
+    TestScript::report(u"ECTOLENS-AGENT blur %1"_s.arg(blur ? u"on"_s : u"off"_s));
+    Q_EMIT agentChanged();
+}
+
+QString SpectacleCore::agentKind() const
+{
+    return m_agent ? m_agent->kind : QString();
+}
+
+QString SpectacleCore::agentClient() const
+{
+    return m_agent && !m_agent->client.isEmpty() ? m_agent->client : i18nc("@info an AI agent with no name", "An agent");
+}
+
+QString SpectacleCore::agentReason() const
+{
+    return m_agent ? m_agent->reason : QString();
+}
+
+void SpectacleCore::agentSend()
+{
+    if (!m_agent) {
+        return;
+    }
+    if (m_agent->kind == u"record"_s) {
+        recordSelection();
+    } else {
+        SelectionEditor::instance()->acceptSelection();
+    }
+}
+
+void SpectacleCore::agentRefuse()
+{
+    cancelScreenshot();
+}
+
+void SpectacleCore::agentAdjust()
+{
+    if (m_agent && !m_agentAdjusting) {
+        m_agentAdjusting = true;
+        Q_EMIT agentChanged();
+    }
+}
+
+bool SpectacleCore::agentAdjusting() const
+{
+    return m_agent && m_agentAdjusting;
+}
+
+void SpectacleCore::markNextCaptureAsApiCall()
+{
+    m_nextIsApi = true;
+}
+
 void SpectacleCore::takeNewScreenshot(int captureMode, int timeout, bool includePointer, bool includeDecorations, bool includeShadow)
 {
+    m_apiCapture = m_nextIsApi;
+    m_nextIsApi = false;
     using CaptureMode = CaptureModeModel::CaptureMode;
     if (timeout < 0 && !m_imagePlatform->supportedShutterModes().testFlag(ImagePlatform::OnClick)) {
         timeout = Settings::captureDelay() * 1000;
@@ -1226,6 +1688,28 @@ void SpectacleCore::takeNewScreenshot(int captureMode, int timeout, bool include
 
 void SpectacleCore::cancelScreenshot()
 {
+    if (m_agent) {
+        // Esc, Don't Send or Print Screen again: the agent gets nothing
+        if (m_recordDelay) {
+            m_recordDelay->stop();
+        }
+        m_agent.reset();
+        answerAgent({{u"status"_s, u"declined"_s}});
+        Q_EMIT agentChanged();
+        CaptureTools::instance()->revertResizedWindow();
+        SpectacleWindow::setVisibilityForAll(QWindow::Hidden);
+        deleteWindows();
+        agentIdle();
+        return;
+    }
+    if (m_recordDelay) {
+        m_recordDelay->stop();
+    }
+    m_retaking = false;
+    m_afterCapture = {};
+    CaptureTools::instance()->revertResizedWindow();
+    m_shareAsked = false;
+    m_shareOnce.clear();
     if (m_startMode != StartMode::Gui || !m_returnToViewer) {
         Q_EMIT allDone();
         return;
@@ -1298,23 +1782,35 @@ void SpectacleCore::doNotify(ScreenCapture type, const ExportManager::Actions &a
     const QString &saveFileName = saveUrl.fileName();
 
     using Action = ExportManager::Action;
+    const bool savedFile = actions & Action::AnySave && !saveFileName.isEmpty();
     if (type == ScreenCapture::Screenshot) {
-        if (actions & Action::AnySave && !saveFileName.isEmpty()) {
-            if (actions & Action::CopyPath) {
-                notification->setText(i18nc("%1 is the filename, %2 the path to the save location", "A screenshot was saved as '%1' to '%2' and the file path of the screenshot has been saved to your clipboard.",
-                                        saveFileName, saveDirPath));
-            } else if (saveDirPath == QStandardPaths::writableLocation(QStandardPaths::PicturesLocation)) {
-                notification->setText(i18nc("%1 is the filename",
-                                            "A screenshot was saved as '%1' to your Pictures folder.",
-                                            saveFileName));
-            } else {
-                notification->setText(i18nc("%1 is the filename, %2 the path to the save location", "A screenshot was saved as '%1' to '%2'.",
-                                        saveFileName, saveDirPath));
-            }
-        } else if (actions & Action::CopyImage) {
-            notification->setText(i18n("A screenshot was saved to your clipboard."));
+        // Ectolens: titled with what was taken ("Konsole 799×508"), and saying where it went
+        // in a sentence (design proposal 2, step 2).
+        if (!m_captureTitle.isEmpty()) {
+            notification->setTitle(m_captureTitle);
         }
-    } else if (type == ScreenCapture::Recording && actions & Action::AnySave && !saveFileName.isEmpty()) {
+        const bool inScreenshots = saveUrl.adjusted(QUrl::RemoveFilename | QUrl::StripTrailingSlash)
+            == Settings::imageSaveLocation().adjusted(QUrl::RemoveFilename | QUrl::StripTrailingSlash);
+        const QString folder = inScreenshots ? i18nc("@info the folder captures save to", "Screenshots") : saveDirPath;
+        if (savedFile && actions & Action::CopyPath) {
+            notification->setText(i18nc("@info %1 file name, %2 folder", "Saved as %1 in %2. Its path is on the clipboard.", saveFileName, folder));
+        } else if (savedFile && actions & Action::CopyImage) {
+            notification->setText(i18nc("@info %1 file name, %2 folder", "Copied to the clipboard and saved as %1 in %2.", saveFileName, folder));
+        } else if (savedFile) {
+            notification->setText(i18nc("@info %1 file name, %2 folder", "Saved as %1 in %2.", saveFileName, folder));
+        } else if (actions & Action::SaveDeclined && actions & Action::CopyImage) {
+            notification->setText(i18nc("@info", "Not saved. Copied to the clipboard instead."));
+        } else if (actions & Action::SaveDeclined) {
+            notification->setText(i18nc("@info", "Not saved."));
+        } else if (actions & Action::CopyImage) {
+            notification->setText(i18nc("@info", "Copied to the clipboard."));
+        } else {
+            notification->setText(i18nc("@info", "Not copied or saved."));
+        }
+    } else if (type == ScreenCapture::Recording && savedFile) {
+        if (!m_captureTitle.isEmpty()) {
+            notification->setTitle(m_captureTitle);
+        }
         if (actions & Action::CopyPath) {
             notification->setText(
                 i18nc("%1 is the filename, %2 the path to the save location", "A recording was saved as '%1' to '%2' and the file path of the recording has been saved to your clipboard.", saveFileName, saveDirPath));
@@ -1325,7 +1821,31 @@ void SpectacleCore::doNotify(ScreenCapture type, const ExportManager::Actions &a
         }
     }
 
-    if (!saveUrl.isEmpty()) {
+    if (type == ScreenCapture::Screenshot && !savedFile) {
+        // Not saved: this notification keeps its own copy of the picture (a later capture
+        // must not change what its Save writes), shows it from its own file, and keeps
+        // Ectolens running while its buttons can still be pressed from the notification history.
+        const QImage picture = ExportManager::instance()->image();
+        auto file = new QTemporaryFile(QDir::tempPath() + u"/ectolens-capture-XXXXXX.png"_s, notification);
+        if (file->open() && picture.save(file, "PNG")) {
+            file->flush();
+            notification->setUrls({QUrl::fromLocalFile(file->fileName())});
+        }
+        auto saveAction = notification->addAction(i18nc("@action:button save the capture to Screenshots", "Save"));
+        connect(saveAction, &KNotificationAction::activated, this, [picture] {
+            ExportManager::instance()->setImage(picture);
+            ExportManager::instance()->exportImage(ExportManager::Save);
+        });
+        auto annotateAction = notification->addAction(i18n("Annotate"));
+        connect(annotateAction, &KNotificationAction::activated, this, [this, picture] {
+            m_annotationDocument->clearAnnotations();
+            m_annotationDocument->setBaseImage(picture);
+            setExportImage(picture);
+            initViewerWindow(ViewerWindow::Viewer);
+            ViewerWindow::instance()->setVisible(true);
+            ViewerWindow::instance()->requestActivate();
+        });
+    } else if (!saveUrl.isEmpty()) {
         notification->setUrls({saveUrl});
 
         auto open = [notification, saveUrl]() {
@@ -1335,8 +1855,14 @@ void SpectacleCore::doNotify(ScreenCapture type, const ExportManager::Actions &a
         };
         auto defaultAction = notification->addDefaultAction(i18nc("Open the screenshot we just saved", "Open"));
         connect(defaultAction, &KNotificationAction::activated, this, open);
+        auto openAction = notification->addAction(i18nc("@action:button open the saved capture", "Open"));
+        connect(openAction, &KNotificationAction::activated, this, open);
 
         if (type == ScreenCapture::Screenshot) {
+            auto folderAction = notification->addAction(i18nc("@action:button", "Show in Folder"));
+            connect(folderAction, &KNotificationAction::activated, this, [saveUrl] {
+                CaptureTools::instance()->showInFolder(saveUrl);
+            });
             auto annotate = [saveUrl]() {
                 QProcess newInstance;
                 newInstance.setProgram(QCoreApplication::applicationFilePath());
@@ -1364,8 +1890,9 @@ void SpectacleCore::doNotify(ScreenCapture type, const ExportManager::Actions &a
     connect(notification, &QObject::destroyed, this, onExpired);
     // BUG: https://bugs.kde.org/show_bug.cgi?id=503838
     // We can't call KNotification::close or else the notifications will be removed from history.
-    // 10 seconds is roughly the expected default duration.
-    QTimer::singleShot(10000, notification, onExpired);
+    // 10 seconds is roughly the expected default duration. Ectolens: an unsaved capture's
+    // Save and Annotate keep working from the history for three minutes, as Extract Text's do.
+    QTimer::singleShot(type == ScreenCapture::Screenshot && !savedFile ? 180000 : 10000, notification, onExpired);
 
     notification->sendEvent();
 }
@@ -1377,22 +1904,226 @@ ExportManager::Actions SpectacleCore::autoExportActions() const
     bool save = (m_startMode != StartMode::Gui && m_cliOptions[Option::Output]) || m_videoMode;
     bool copyImage = m_cliOptions[Option::CopyImage] && !m_videoMode;
     bool copyPath = m_cliOptions[Option::CopyPath];
+    bool saveAs = false;
     ExportManager::Actions actions;
     if (m_startMode != StartMode::Background) {
+        // Ectolens: After Capture (Capture's arrow, Settings › General). Copy to clipboard
+        // is on by default and Save to file off.
         save |= Settings::autoSaveImage();
-        copyImage |= Settings::clipboardGroup() == Settings::PostScreenshotCopyImage && !m_videoMode;
-        copyPath |= Settings::clipboardGroup() == Settings::PostScreenshotCopyLocation;
+        saveAs = Settings::autoSaveImage() && Settings::afterCaptureSaveWhere() == Settings::AskWhereEachTime && !m_videoMode;
+        const bool copy = Settings::afterCaptureCopy();
+        // A file path needs the saved file: should File Path be set without Save to file (the
+        // menus switch it back to Image, but a config file can say anything), copy the image.
+        const bool path = Settings::afterCaptureCopyWhat() == Settings::CopyTheFilePath && save;
+        copyImage |= copy && !path && !m_videoMode;
+        copyPath |= copy && path;
     }
-    if (m_startMode == StartMode::Gui) {
-        actions.setFlag(Action::Save, save);
-        actions.setFlag(Action::CopyImage, copyImage);
-    } else {
-        // In background and dbus mode, ensure that either save or copy image is enabled.
+    if (m_startMode == StartMode::Background || m_apiCapture) {
+        // In background mode, and for D-Bus API calls (scripts expect a file, as Spectacle
+        // promised), ensure that either save or copy image is enabled, as before.
+        if (m_apiCapture) {
+            saveAs = false;
+            save |= !copyImage;
+        }
         actions.setFlag(Action::Save, save || !copyImage);
         actions.setFlag(Action::CopyImage, !actions.testFlag(Action::Save) || copyImage);
+    } else {
+        actions.setFlag(Action::Save, save && !saveAs);
+        actions.setFlag(Action::SaveAs, saveAs);
+        actions.setFlag(Action::CopyImage, copyImage);
     }
-    actions.setFlag(Action::CopyPath, actions.testFlag(Action::Save) && copyPath);
+    actions.setFlag(Action::CopyPath, (actions & Action::AnySave) && copyPath);
     return actions;
+}
+
+QString SpectacleCore::captureTitle(const QRectF &rect) const
+{
+    // The notification's title says what was taken: "Konsole 799×508" (design proposal 2).
+    qreal dpr = 1;
+    for (auto window : CaptureWindow::instances()) {
+        if (QRectF(window->screenToFollow()->geometry()).intersects(rect)) {
+            dpr = std::max(dpr, window->devicePixelRatio());
+        }
+    }
+    const QSize px = (rect.size() * dpr).toSize();
+    const QString size = i18nc("@info width×height", "%1×%2", QString::number(px.width()), QString::number(px.height()));
+    const auto editor = SelectionEditor::instance();
+    if (editor->frameIsWindow() && !editor->frameAppName().isEmpty()) {
+        return i18nc("@title %1 app name, %2 size", "%1 %2", editor->frameAppName(), size);
+    }
+    for (auto screen : qApp->screens()) {
+        if (QRectF(screen->geometry()) == rect) {
+            return i18nc("@title %1 size", "Full screen %1", size);
+        }
+    }
+    return i18nc("@title %1 size of an area you drew", "Area %1", size);
+}
+
+void SpectacleCore::runAfterCapture(const ExportManager::Actions &actions, const QUrl &url)
+{
+    if (!m_afterCapture.pending) {
+        return;
+    }
+    const auto after = m_afterCapture;
+    m_afterCapture = {};
+    const bool saved = actions & ExportManager::AnySave && url.isValid();
+    auto exportManager = ExportManager::instance();
+    // Open with and Share get the saved file, or their own copy of the picture: the shared
+    // temporary file is replaced by the next capture, maybe before the app or upload reads it.
+    // The copy is removed after half an hour.
+    QUrl copy;
+    auto fileFor = [&]() {
+        if (saved) {
+            return url;
+        }
+        if (copy.isEmpty()) {
+            QTemporaryFile file(QDir::tempPath() + u"/ectolens-capture-XXXXXX.png"_s);
+            file.setAutoRemove(false);
+            if (file.open() && exportManager->image().save(&file, "PNG")) {
+                copy = QUrl::fromLocalFile(file.fileName());
+                const QString path = file.fileName();
+                QTimer::singleShot(30 * 60 * 1000, qApp, [path] {
+                    QFile::remove(path);
+                });
+            }
+        }
+        return copy;
+    };
+    if (after.open && !after.openApp.isEmpty()) {
+        CaptureTools::instance()->openWith(after.openApp, fileFor());
+    }
+    if (after.showInFolder && saved) {
+        CaptureTools::instance()->showInFolder(url);
+    }
+    if (after.share && !after.shareTarget.isEmpty()) {
+        CaptureTools::instance()->share(after.shareTarget, fileFor());
+    }
+}
+
+void SpectacleCore::captureSharingWith(const QString &pluginId)
+{
+    m_shareAsked = true;
+    m_shareOnce = pluginId;
+    SelectionEditor::instance()->acceptSelection();
+}
+
+void SpectacleCore::closeOverlayQuietly()
+{
+    CaptureTools::instance()->revertResizedWindow();
+    SpectacleWindow::setVisibilityForAll(QWindow::Hidden);
+    m_captureWindows.clear();
+    if (m_captureFromWindow) {
+        // the capture started from the Ectolens window: it comes back
+        initViewerWindow(ViewerWindow::Viewer);
+        ViewerWindow::instance()->setVisible(true);
+    }
+}
+
+void SpectacleCore::retakeFrozenPicture(const QString &reframeWindowUuid)
+{
+    // The overlay stays up the whole time: KWin
+    // takes a picture of just the resized window, and it goes into the frozen picture where
+    // the window is now. Twice, to speed it up: at once, as soon as
+    // the app has drawn at its new size, so the picture follows the resize; and again a
+    // second later, quietly, so a hint the app shows for a moment after a resize (Konsole
+    // shows the terminal's size) doesn't stay in the picture.
+    m_retakeUuid = reframeWindowUuid;
+    m_retaking = true;
+    const int generation = ++m_retakeGeneration;
+    QTimer::singleShot(120, this, [this, generation] {
+        takeWindowPicture(generation, 1);
+    });
+    QTimer::singleShot(1300, this, [this, generation] {
+        takeWindowPicture(generation, 2);
+    });
+}
+
+void SpectacleCore::takeWindowPicture(int generation, int pass)
+{
+    // cancelled, captured, or a newer resize meanwhile: nothing to do
+    if (generation != m_retakeGeneration || !m_retaking || CaptureWindow::instances().isEmpty()) {
+        return;
+    }
+    // the quiet second picture never wipes marks drawn since the first
+    if (pass == 2 && m_annotationDocument->undoStackDepth() > 0) {
+        m_retaking = false;
+        return;
+    }
+    const auto window = WindowPicker::instance()->window(m_retakeUuid);
+    if (!window) {
+        m_retaking = false;
+        return;
+    }
+    // the resized window, then every window stacked above it that overlaps it, so they
+    // stay on top in the picture as they are on screen
+    QList<WindowPicker::Window> layers{*window};
+    for (const auto &above : WindowPicker::instance()->windowsAbove(m_retakeUuid)) {
+        if (above.geometry.intersects(window->geometry)) {
+            layers << above;
+        }
+    }
+    auto shots = std::make_shared<QList<std::pair<QRect, QImage>>>();
+    auto pending = std::make_shared<int>(layers.size());
+    auto failed = std::make_shared<bool>(false);
+    const ImagePlatformKWin::ScreenShotFlags flags = ImagePlatformKWin::ScreenShotFlag::IncludeDecoration | ImagePlatformKWin::ScreenShotFlag::NativeSize;
+    for (int i = 0; i < layers.size(); ++i) {
+        shots->append({layers[i].geometry, QImage()});
+        auto source = new ScreenShotSourceWindow2(layers[i].uuid, flags);
+        connect(source, &ScreenShotSource2::finished, this, [this, source, i, shots, pending, failed, generation, pass](const ResultVariant &result) {
+            source->deleteLater();
+            if (result.index() == ResultVariant::Image) {
+                (*shots)[i].second = std::get<ResultVariant::Image>(result);
+            } else if (i == 0) {
+                *failed = true; // the resized window itself
+            }
+            if (--*pending > 0) {
+                return;
+            }
+            if (generation != m_retakeGeneration || !m_retaking || CaptureWindow::instances().isEmpty()) {
+                return;
+            }
+            if (pass == 2) {
+                m_retaking = false;
+                if (m_annotationDocument->undoStackDepth() > 0) {
+                    return; // marks were drawn while it was being taken
+                }
+            }
+            if (*failed) {
+                if (pass == 1) {
+                    showErrorMessage(i18nc("@info", "Couldn't take the resized window's picture."));
+                }
+                return;
+            }
+            // into the frozen picture, each at its window's place, bottom to top
+            QImage picture = m_annotationDocument->baseImage();
+            const qreal dpr = m_annotationDocument->imageDpr() > 0 ? m_annotationDocument->imageDpr() : 1.0;
+            const QPointF origin = m_annotationDocument->canvasRect().topLeft();
+            {
+                QPainter painter(&picture);
+                painter.setRenderHint(QPainter::SmoothPixmapTransform);
+                const qreal k = dpr / picture.devicePixelRatio();
+                for (const auto &[frame, shot] : std::as_const(*shots)) {
+                    if (shot.isNull()) {
+                        continue;
+                    }
+                    const QRectF target(QPointF(frame.topLeft()) - origin, QSizeF(frame.size()));
+                    painter.drawImage(QRectF(target.topLeft() * k, target.size() * k), shot);
+                }
+            }
+            if (pass == 1) {
+                m_annotationDocument->clearAnnotations();
+            }
+            m_annotationDocument->setBaseImage(picture);
+            setExportImage(picture);
+            if (pass == 1) {
+                SelectionEditor::instance()->pickWindow(m_retakeUuid);
+                // the marks are gone and the window is its new size: the frame's history starts here
+                FrameHistory::instance()->reset();
+            }
+            CaptureTools::instance()->scanFrozenPicture();
+            TestScript::report(u"ECTOLENS-RETAKEN %1 %2"_s.arg(pass).arg(CaptureTools::instance()->msSinceResize()));
+        });
+    }
 }
 
 ImagePlatform::GrabMode SpectacleCore::toGrabMode(CaptureModeModel::CaptureMode captureMode) const
@@ -1531,7 +2262,7 @@ void SpectacleCore::deleteWindows()
 
 void SpectacleCore::unityLauncherUpdate(const QVariantMap &properties) const
 {
-    QDBusMessage message = QDBusMessage::createSignal(u"/org/kde/Spectacle"_s,
+    QDBusMessage message = QDBusMessage::createSignal(u"/org/kde/Ectolens"_s,
                                                       u"com.canonical.Unity.LauncherEntry"_s,
                                                       u"Update"_s);
     message.setArguments({QApplication::desktopFileName(), properties});
@@ -1557,6 +2288,29 @@ void SpectacleCore::startRecording(VideoPlatform::RecordingMode mode, bool withP
     setVideoMode(true);
     const auto &output = m_outputUrl.isLocalFile() ? videoOutputUrl() : QUrl();
     m_videoPlatform->startRecording(output, mode, {}, withPointer);
+}
+
+void SpectacleCore::recordSelection()
+{
+    if (m_videoPlatform->isRecording() || !(m_videoPlatform->supportedRecordingModes() & VideoPlatform::Region) || CaptureWindow::instances().isEmpty()) {
+        return;
+    }
+    // In video mode the overlay's frozen picture (with any marks drawn on it)
+    // fades out over Kirigami's very long duration; accept once it has gone, and
+    // the accepted handler records the frame as a region recording.
+    setVideoMode(true);
+    if (!m_recordDelay) {
+        m_recordDelay = new QTimer(this);
+        m_recordDelay->setSingleShot(true);
+        m_recordDelay->setInterval(450);
+        connect(m_recordDelay, &QTimer::timeout, this, [] {
+            // Esc or Close during the fade closed the overlay: nothing to record then
+            if (!CaptureWindow::instances().isEmpty()) {
+                SelectionEditor::instance()->acceptSelection();
+            }
+        });
+    }
+    m_recordDelay->start();
 }
 
 void SpectacleCore::finishRecording()
@@ -1620,6 +2374,9 @@ QString SpectacleCore::timeFromMilliseconds(qint64 milliseconds) const
 void SpectacleCore::activateAction(const QString &actionName, const QVariant &parameter)
 {
     Q_UNUSED(parameter)
+    if (!m_videoPlatform->isRecording() && closeOverlayOnSecondPress()) {
+        return;
+    }
     m_startMode = StartMode::DBus;
     if (m_videoPlatform->isRecording()) {
         // BUG: https://bugs.kde.org/show_bug.cgi?id=481471

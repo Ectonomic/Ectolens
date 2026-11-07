@@ -1,0 +1,15 @@
+Planted fault for tests/install/stranger-check.sh (PLANT=tests/install/plants/uninstall-forgets-to-unregister.patch).
+fedora-44: uninstall.sh leaves Ectolens's actions in the shortcut service. Must fail: the shortcut settings no longer list Ectolens.
+
+diff -ru a/tools/install/shortcuts.sh b/tools/install/shortcuts.sh
+--- a/tools/install/shortcuts.sh	2026-11-05 02:22:33.806704262 -0500
++++ b/tools/install/shortcuts.sh	2026-11-05 02:22:33.806776434 -0500
+@@ -99,7 +99,7 @@
+         fi
+         # the shortcut service forgets Ectolens's actions, and with them its own default keys
+         for action in $(component_actions "$ECTOLENS"); do
+-            kga --object-path /kglobalaccel --method org.kde.KGlobalAccel.unregister "$ECTOLENS" "$action" >/dev/null || true
++            :
+         done
+     elif [ -s "$STATE/spectacle-shortcuts" ]; then
+         if [ "$FORCE" = 1 ]; then

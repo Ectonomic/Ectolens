@@ -157,6 +157,18 @@ public:
 };
 
 /**
+ * Ectolens: one window by its id, through org.kde.KWin.ScreenShot2's CaptureWindow. The
+ * size menu takes the resized window this way, so the overlay never has to step aside.
+ */
+class ScreenShotSourceWindow2 final : public ScreenShotSource2
+{
+    Q_OBJECT
+
+public:
+    ScreenShotSourceWindow2(const QString &handle, ImagePlatformKWin::ScreenShotFlags flags);
+};
+
+/**
  * The ScreenShotSourceActiveScreen2 class provides a convenient way to take a screenshot
  * of the active screen. This uses the org.kde.KWin.ScreenShot2 dbus interface.
  */

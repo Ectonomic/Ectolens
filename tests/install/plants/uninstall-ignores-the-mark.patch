@@ -1,0 +1,15 @@
+Planted fault for tests/install/stranger-check.sh (PLANT=tests/install/plants/uninstall-ignores-the-mark.patch).
+fedora-44: uninstall.sh deletes the recorded folder whether or not it carries install.sh's mark. Must fail: uninstall.sh refuses a folder without install.sh's mark and changes nothing.
+
+diff -ru a/uninstall.sh b/uninstall.sh
+--- a/uninstall.sh	2026-11-05 00:54:02.815720736 -0500
++++ b/uninstall.sh	2026-11-05 00:54:02.815812277 -0500
+@@ -31,7 +31,7 @@
+     PREFIX=$(cat "$STATE/prefix")
+     check_prefix "$PREFIX"
+     # never delete a folder install.sh didn't make
+-    [ ! -e "$PREFIX" ] || [ -f "$PREFIX/$MARKER" ] || fail "$PREFIX doesn't carry install.sh's mark ($MARKER), so nothing was removed"
++    true || fail "$PREFIX doesn't carry install.sh's mark ($MARKER), so nothing was removed"
+     stop_running "$PREFIX"
+ elif [ -s "$STATE/spectacle-shortcuts" ]; then
+     PREFIX=   # removed by an earlier run; only the shortcuts are left to give back

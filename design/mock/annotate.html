@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ectolens · marking options and the Text and Number marks · working mock</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<script src="app-match.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  html { -webkit-font-smoothing: antialiased; }
+  body { margin: 0; background: #fff; color: #18181b; font: 400 14px/1.55 "Geist", sans-serif; }
+  h2 { font-size: 15px; font-weight: 600; margin: 28px 24px 10px; }
+  p.n { margin: 0 24px 12px; color: #52525b; max-width: 90ch; }
+  .app { --bg: #0a0a0a; --bg-subtle: #111113; --bg-muted: #18181b; --bg-lift: #2a2a2e; --border: #27272a; --border-strong: #3f3f46;
+         --fg: #fafafa; --fg-muted: #a1a1aa; --fg-subtle: #8b8b94; --brand: #c8f22e; --error: #f87171;
+         font: 400 13px/1.55 "Geist", sans-serif; color: var(--fg); }
+  .screen { position: relative; width: 1600px; height: 900px; overflow: hidden; background: #000 url(img/v2/today-scene.png) 0 0 / 1600px 900px no-repeat; margin: 0 24px; }
+  .frame { position: absolute; box-shadow: 0 0 0 4000px rgba(0,0,0,.4); outline: 1px solid var(--brand); outline-offset: -1px; }
+  .i { width: 16px; height: 16px; display: block; flex: none; }
+  .ftb { position: absolute; display: inline-flex; align-items: center; gap: 2px; padding: 3px 8px; height: 36px;
+         background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 999px;
+         box-shadow: 0 10px 24px -6px rgba(0,0,0,.6), 0 2px 6px rgba(0,0,0,.35); white-space: nowrap; }
+  .tbtn { height: 28px; min-width: 28px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 11px; border-radius: 999px; font-weight: 500; font-size: 13px; color: var(--fg); }
+  .tbtn.io { padding: 0; width: 28px; position: relative; }
+  .tbtn.io img { opacity: .72; }
+  .tbtn.io.off img { opacity: .28; }
+  .tbtn.io.on { background: var(--bg-lift); }
+  .tbtn.io.on img { opacity: 1; }
+  .tbtn.io.on::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 2px; height: 2px; border-radius: 2px; background: var(--brand); }
+  .tsep { width: 1px; height: 14px; margin: 0 7px; flex: none; background: linear-gradient(to bottom, transparent, var(--border-strong) 30%, var(--border-strong) 70%, transparent); }
+  .who { display: inline-flex; align-items: center; gap: 7px; padding: 0 8px 0 8px; height: 28px; border-radius: 999px; font: 500 12.5px/1 "Geist Mono", monospace; }
+  .split { display: inline-flex; }
+  .split .arrow { width: 22px; min-width: 22px; padding: 0; margin-left: -6px; }
+  .split .arrow img { width: 10px; height: 10px; opacity: .7; }
+  .key { font-size: 10.5px; font-weight: 500; line-height: 17px; padding: 0 5px; border-radius: 4px; background: var(--bg); color: var(--fg-muted); }
+
+  /* ── THE RAIL: the same row, stood on end. 36 wide, fully round, buttons 28. ── */
+  .rail { position: absolute; display: inline-flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 3px; width: 36px;
+          background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 999px;
+          box-shadow: 0 10px 24px -6px rgba(0,0,0,.6), 0 2px 6px rgba(0,0,0,.35); }
+  .rail .hsep { width: 14px; height: 1px; margin: 6px 0; flex: none; background: linear-gradient(to right, transparent, var(--border-strong) 30%, var(--border-strong) 70%, transparent); }
+  .rb { width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center; position: relative; color: var(--fg); }
+  .rb.hot { background: var(--bg-muted); }
+  .rb.open { background: var(--bg-lift); }
+  .rb.on { background: var(--bg-lift); }
+  .rb.on::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 2px; height: 2px; border-radius: 2px; background: var(--brand); }
+  .chip { width: 16px; height: 16px; border-radius: 5px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+  .ring { width: 16px; height: 16px; border-radius: 5px; border: 3.5px solid; }
+  .none { width: 16px; height: 16px; border-radius: 5px; box-shadow: inset 0 0 0 1px var(--border-strong); background: linear-gradient(135deg, transparent 45%, var(--fg-subtle) 45%, var(--fg-subtle) 55%, transparent 55%); }
+  .wline { width: 16px; border-radius: 99px; background: var(--fg); }
+  .num { font: 500 12px/1 "Geist Mono", monospace; color: var(--fg); }
+  .aa { font: 600 13px/1 "Geist", sans-serif; letter-spacing: -.01em; }
+  .glyph-label { height: 16px; padding: 0 4px; border-radius: 4px; background: var(--fg); color: var(--bg); font: 600 11px/16px "Geist", sans-serif; }
+  .glyph-shadow { width: 14px; height: 14px; position: relative; }
+  .glyph-shadow::before { content: ""; position: absolute; left: 3px; top: 3px; width: 11px; height: 11px; border-radius: 3px; background: var(--fg); opacity: .32; }
+  .glyph-shadow::after { content: ""; position: absolute; left: 0; top: 0; width: 11px; height: 11px; border-radius: 3px; border: 1.5px solid var(--fg); background: var(--bg-subtle); }
+  .rb.off .glyph-shadow, .rb.off .glyph-label { opacity: .45; }
+  .vslider { width: 28px; height: 104px; position: relative; }
+  .vslider .tr { position: absolute; left: 12px; top: 6px; bottom: 6px; width: 4px; border-radius: 2px; background: var(--border-strong); }
+  .vslider .fi { position: absolute; left: 12px; bottom: 6px; width: 4px; border-radius: 2px; background: var(--fg); }
+  .vslider .kn { position: absolute; left: 7px; width: 14px; height: 14px; border-radius: 7px; background: var(--fg); border: 1px solid var(--bg); }
+  .tip { position: absolute; white-space: nowrap; padding: 4px 8px; border-radius: 6px; background: var(--bg-lift); color: var(--fg); font-size: 12px; box-shadow: 0 4px 12px rgba(0,0,0,.5); }
+
+  /* ── popovers ── */
+  .pop { position: absolute; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 16px 36px -8px rgba(0,0,0,.7); padding: 10px; }
+  .pop .mh { padding: 2px 4px 8px; font-size: 11.5px; font-weight: 500; color: var(--fg-subtle); }
+  .grid { display: grid; grid-template-columns: repeat(6, 24px); gap: 6px; padding: 0 2px; }
+  .sw { width: 24px; height: 24px; border-radius: 7px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); position: relative; }
+  .sw.cur::after { content: ""; position: absolute; inset: -3px; border-radius: 9px; box-shadow: 0 0 0 1.5px var(--fg); }
+  .sw.nonesw { background: linear-gradient(135deg, transparent 46%, var(--fg-subtle) 46%, var(--fg-subtle) 54%, transparent 54%); box-shadow: inset 0 0 0 1px var(--border-strong); }
+  .sw.custom { background: conic-gradient(from 90deg, #f43f5e, #f59e0b, #c8f22e, #22d3ee, #3b82f6, #a855f7, #f43f5e); }
+  .pop .ms { height: 1px; background: var(--border); margin: 10px -10px; }
+  .pick { position: relative; width: 186px; height: 120px; border-radius: 8px; background: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, hsl(74, 100%, 50%)); margin: 0 2px; }
+  .pick .dot { position: absolute; width: 14px; height: 14px; border-radius: 7px; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.4); }
+  .hue { position: relative; width: 186px; height: 10px; border-radius: 5px; margin: 10px 2px 0; background: linear-gradient(to right, red, #ff0, lime, cyan, blue, #f0f, red); }
+  .alpha { position: relative; width: 186px; height: 10px; border-radius: 5px; margin: 8px 2px 0; background: linear-gradient(to right, transparent, #c8f22e), repeating-conic-gradient(#3f3f46 0 25%, #18181b 0 50%) 0 0 / 8px 8px; }
+  .hue .k, .alpha .k { position: absolute; top: -3px; width: 16px; height: 16px; border-radius: 8px; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.4); }
+  .hexrow { display: flex; gap: 8px; margin: 10px 2px 0; align-items: center; }
+  .in { height: 28px; display: inline-flex; align-items: center; padding: 0 9px; border: 1px solid var(--border); border-radius: 8px; color: var(--fg); font: 400 12.5px/1 "Geist Mono", monospace; background: var(--bg-muted); }
+  .in.focus { border-color: var(--brand); }
+  .mi { display: flex; align-items: center; gap: 10px; height: 30px; padding: 0 8px; border-radius: 6px; font-size: 13px; }
+  .mi.hot { background: var(--bg-muted); }
+  .mi .tick { width: 12px; color: var(--brand); font-weight: 600; flex: none; }
+  .seg { display: flex; padding: 2px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-muted); }
+  .seg span { flex: 1; text-align: center; height: 26px; line-height: 26px; border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--fg-muted); }
+  .seg span.on { background: var(--bg); color: var(--fg); box-shadow: 0 1px 2px rgba(0,0,0,.6); }
+
+  /* ── the marks as the picture gets them ── */
+  .lab { position: absolute; font: 600 14.7px/1.2 "Geist", sans-serif; letter-spacing: -.005em; white-space: nowrap; }
+  .L1 { background: #c8f22e; color: #0a0a0a; padding: 3px 9px; border-radius: 6px; box-shadow: 2px 2px 2px rgba(0,0,0,.5); }
+  .L2 { background: #c8f22e; color: #0a0a0a; padding: 3px 9px; border-radius: 6px; box-shadow: 0 0 0 1.5px rgba(10,10,10,.85), 2px 2px 2px rgba(0,0,0,.5); }
+  .L3 { background: #0a0a0a; color: #c8f22e; padding: 3px 9px; border-radius: 6px; box-shadow: 2px 2px 2px rgba(0,0,0,.5); }
+  .L4 { background: #c8f22e; color: #0a0a0a; padding: 3px 9px; border-radius: 6px; box-shadow: 0 0 0 1px #8fb317, 2px 2px 2px rgba(0,0,0,.5); }
+  .N4 { background: #c8f22e; color: #0a0a0a; box-shadow: 0 0 0 1px #8fb317, 2px 2px 2px rgba(0,0,0,.5); }
+  .L0 { color: #000; text-shadow: 2px 2px 2px rgba(0,0,0,.5); font-weight: 400; font-family: "Noto Sans", sans-serif; font-size: 13.3px; }
+  .bd { position: absolute; width: 26px; height: 26px; border-radius: 13px; display: grid; place-items: center; font: 600 13.3px/1 "Geist", sans-serif; font-variant-numeric: tabular-nums; }
+  .N1 { background: #c8f22e; color: #0a0a0a; box-shadow: 2px 2px 2px rgba(0,0,0,.5); }
+  .N2 { background: #c8f22e; color: #0a0a0a; box-shadow: 0 0 0 2px #fff, 2px 2px 3px 1px rgba(0,0,0,.5); }
+  .N3 { background: #c8f22e; color: #0a0a0a; box-shadow: 0 0 0 1.5px rgba(10,10,10,.85), 2px 2px 2px rgba(0,0,0,.5); }
+  .N0 { background: #f00; color: #000; box-shadow: 2px 2px 2px rgba(0,0,0,.5); font: 400 13.3px/1 "Noto Sans", sans-serif; width: 24px; height: 24px; }
+  .pill { width: auto; padding: 0 8px; }
+
+  /* the light sample: a docs page */
+  .page { position: relative; width: 760px; height: 420px; background: #fff; color: #1f2328; font: 400 14px/1.6 system-ui, sans-serif; padding: 26px 32px; border-radius: 8px; box-shadow: 0 0 0 1px #e4e4e7; overflow: hidden; }
+  .page h3 { margin: 0 0 8px; font-size: 22px; }
+  .page .c { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 10px 12px; font: 13px/1.5 ui-monospace, monospace; margin: 10px 0; }
+  .page .btnx { display: inline-block; background: #1f883d; color: #fff; border-radius: 6px; padding: 5px 14px; font-weight: 600; font-size: 13px; }
+  .term { position: relative; width: 760px; height: 420px; background: #232627; color: #fcfcfc; font: 13px/18px "Hack", "DejaVu Sans Mono", monospace; padding: 14px 16px; border-radius: 8px; overflow: hidden; white-space: pre; }
+  .samples { display: flex; gap: 24px; margin: 0 24px; flex-wrap: wrap; }
+  .tag { position: absolute; font: 500 11px/1 "Geist Mono", monospace; color: #71717a; }
+  .rails { display: flex; gap: 40px; align-items: flex-start; margin: 0 24px; padding: 30px; background: #1b1b1e url(img/wallpaper-1600.jpg) center/cover; border-radius: 10px; min-height: 460px; position: relative; }
+  .rails .rail { position: relative; }
+  .rails .cap { position: absolute; top: -22px; left: -8px; font: 500 11px/1 "Geist Mono", monospace; color: #fff; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+</style>
+</head>
+<body class="app-match">
+
+<h2>1 · The overlay with Text in use: the options stand on the right of the frame, centered on it</h2>
+<p class="n">Rail: 36 wide like every row, centered on the frame's middle, 10 px out from its right edge (left edge when there is no room, inside the edge when neither fits). Top and bottom rows stay centered on the frame.</p>
+<div class="screen app" id="s1">
+  <div class="frame" style="left:400px; top:196px; width:799px; height:508px"></div>
+  <!-- top row: size label + tools, centered on the frame (center x = 799.5) -->
+  <div class="ftb" id="top" style="top:150px">
+    <span class="who">799×508</span><span class="tsep"></span>
+    <span class="tbtn io off"><img class="i" src="icons/edit-undo.svg"></span><span class="tbtn io off"><img class="i" src="icons/edit-redo.svg"></span><span class="tsep"></span>
+    <span class="tbtn io"><img class="i" src="icons/transform-crop.svg"></span><span class="tbtn io"><img class="i" src="icons/edit-select.svg"></span><span class="tsep"></span>
+    <span class="tbtn io"><img class="i" src="icons/draw-freehand.svg"></span><span class="tbtn io"><img class="i" src="icons/draw-highlight.svg"></span><span class="tbtn io"><img class="i" src="icons/draw-line.svg"></span><span class="tbtn io"><img class="i" src="icons/draw-arrow.svg"></span><span class="tsep"></span>
+    <span class="tbtn io"><img class="i" src="icons/draw-rectangle.svg"></span><span class="tbtn io"><img class="i" src="icons/draw-ellipse.svg"></span><span class="tsep"></span>
+    <span class="tbtn io"><img class="i" src="icons/pixelate.svg"></span><span class="tbtn io"><img class="i" src="icons/blur.svg"></span><span class="tsep"></span>
+    <span class="tbtn io on"><img class="i" src="icons/draw-text.svg"></span><span class="tbtn io"><img class="i" src="icons/draw-number.svg"></span>
+  </div>
+  <div class="ftb" id="bottom" style="top:714px">
+    <span class="split"><span class="tbtn"><img class="i" src="icons/camera-photo.svg">Capture<span class="key">Enter</span></span><span class="tbtn arrow"><img src="icons/arrow-down.svg"></span></span>
+    <span class="split"><span class="tbtn"><img class="i" src="icons/media-record.svg">Record<span class="key">R</span></span><span class="tbtn arrow"><img src="icons/arrow-down.svg"></span></span>
+    <span class="tsep"></span>
+    <span class="split"><span class="tbtn"><img class="i" src="icons/document-scan.svg">Extract Text</span><span class="tbtn arrow"><img src="icons/arrow-down.svg"></span></span>
+    <span class="tbtn io"><img class="i" src="icons/view-hidden.svg"></span><span class="tbtn io"><img class="i" src="icons/window-pin.svg"></span><span class="tbtn io"><img class="i" src="icons/color-picker.svg"></span><span class="tbtn io"><img class="i" src="icons/measure.svg"></span>
+    <span class="tsep"></span><span class="tbtn io"><img class="i" src="icons/gear.svg"></span>
+  </div>
+  <!-- the rail for Text -->
+  <div class="rail" id="railText" style="left:1209px">
+    <span class="rb"><span class="chip" style="background:#c8f22e"></span></span>
+    <span class="rb on"><span class="glyph-label">A</span></span>
+    <span class="hsep"></span>
+    <span class="rb"><span class="aa">Aa</span></span>
+    <span class="rb"><span class="num">11</span></span>
+    <span class="hsep"></span>
+    <span class="rb on"><span class="glyph-shadow"></span></span>
+  </div>
+  <!-- marks -->
+  <div class="lab L1" style="left:700px; top:276px">Run this first</div>
+  <div class="bd N1" style="left:606px; top:298px">1</div>
+  <div class="bd N1" style="left:606px; top:352px">2</div>
+  <div class="bd N1" style="left:606px; top:406px">3</div>
+</div>
+
+<h2>2 · The three label styles and three badge styles, on a light page and a dark terminal (today's look first)</h2>
+<div class="samples app">
+  <div class="page" id="light">
+    <h3>Install the command-line tools</h3>
+    <div>Run the installer, then sign in with your account.</div>
+    <div class="c">$ curl -fsSL https://example.com/install.sh | sh</div>
+    <div>When it finishes, open a new terminal and check the version:</div>
+    <div class="c">$ ecto --version</div>
+    <span class="btnx">Continue</span>
+    <div class="lab L0" style="left:470px; top:60px">Today</div><div class="bd N0" style="left:430px; top:58px">1</div>
+    <div class="lab L1" style="left:470px; top:120px">Label, no ring</div><div class="bd N1" style="left:430px; top:120px">1</div>
+    <div class="lab L2" style="left:470px; top:180px">Label, dark ring</div><div class="bd N3" style="left:430px; top:180px">2</div>
+    <div class="lab L3" style="left:470px; top:240px">Dark label</div><div class="bd N2" style="left:430px; top:240px">3</div>
+    <div class="lab L4" style="left:620px; top:120px">Ring a shade darker</div><div class="bd N4" style="left:620px; top:180px">4</div><div class="bd N4 pill" style="left:660px; top:180px">12</div>
+    <div class="bd N1 pill" style="left:470px; top:300px">12</div><div class="bd N3 pill" style="left:520px; top:300px">12</div>
+    <div class="lab L1" style="left:340px; top:356px">Two lines of label<br>stay one box</div>
+  </div>
+  <div class="term">$ tests/e2e/record-synthetic.sh build/spectacle/bin out high 60 60 3
+PASS  recorder finished cleanly
+PASS  a file was written
+      libx264: h264, 189 frames in 3.16s, High, yuv420p
+PASS  the file plays
+PASS  frame rate holds 60 per second
+PASS  encoded as h264 by libx264
+$
+    <div class="lab L0" style="left:470px; top:60px">Today</div><div class="bd N0" style="left:430px; top:58px">1</div>
+    <div class="lab L1" style="left:470px; top:120px">Label, no ring</div><div class="bd N1" style="left:430px; top:120px">1</div>
+    <div class="lab L2" style="left:470px; top:180px">Label, dark ring</div><div class="bd N3" style="left:430px; top:180px">2</div>
+    <div class="lab L3" style="left:470px; top:240px">Dark label</div><div class="bd N2" style="left:430px; top:240px">3</div>
+    <div class="lab L4" style="left:620px; top:120px">Ring a shade darker</div><div class="bd N4" style="left:620px; top:180px">4</div><div class="bd N4 pill" style="left:660px; top:180px">12</div>
+    <div class="bd N1 pill" style="left:470px; top:300px">12</div><div class="bd N3 pill" style="left:520px; top:300px">12</div>
+  </div>
+</div>
+
+<h2>3 · The rail for each tool, and its popovers</h2>
+<div class="rails app">
+  <div class="rail"><span class="cap">Text</span>
+    <span class="rb"><span class="chip" style="background:#c8f22e"></span></span>
+    <span class="rb on"><span class="glyph-label">A</span></span>
+    <span class="hsep"></span>
+    <span class="rb"><span class="aa">Aa</span></span>
+    <span class="rb"><span class="num">11</span></span>
+    <span class="hsep"></span>
+    <span class="rb on"><span class="glyph-shadow"></span></span>
+  </div>
+  <div class="rail"><span class="cap">Number</span>
+    <span class="rb"><span class="chip" style="background:#c8f22e"></span></span>
+    <span class="hsep"></span>
+    <span class="rb"><span class="num" style="font-size:15px">+</span></span>
+    <span class="rb"><span class="num" style="font-weight:600">3</span></span>
+    <span class="rb"><span class="num" style="font-size:15px">−</span></span>
+    <span class="hsep"></span>
+    <span class="rb"><span class="aa">Aa</span></span>
+    <span class="rb"><span class="num">10</span></span>
+    <span class="hsep"></span>
+    <span class="rb on"><span class="glyph-shadow"></span></span>
+  </div>
+  <div class="rail"><span class="cap">Rectangle</span>
+    <span class="rb"><span class="ring" style="border-color:#f87171"></span></span>
+    <span class="rb"><span class="wline" style="height:2px"></span></span>
+    <span class="rb"><span class="none"></span></span>
+    <span class="hsep"></span>
+    <span class="rb on"><span class="glyph-shadow"></span></span>
+  </div>
+  <div class="rail"><span class="cap">Arrow</span>
+    <span class="rb"><span class="chip" style="background:#ef4444"></span></span>
+    <span class="rb"><span class="wline" style="height:4px"></span></span>
+    <span class="hsep"></span>
+    <span class="rb off"><span class="glyph-shadow"></span></span>
+  </div>
+  <div class="rail"><span class="cap">Blur</span>
+    <span class="vslider"><span class="tr"></span><span class="fi" style="height:25px"></span><span class="kn" style="bottom:22px"></span></span>
+  </div>
+  <!-- the color popover beside the Text rail's color -->
+  <div style="position:relative; width:250px">
+    <div class="rail" style="position:absolute; left:0; top:0">
+      <span class="rb open"><span class="chip" style="background:#c8f22e"></span></span>
+      <span class="rb on"><span class="glyph-label">A</span></span>
+      <span class="hsep"></span>
+      <span class="rb"><span class="aa">Aa</span></span>
+      <span class="rb"><span class="num">11</span></span>
+      <span class="hsep"></span>
+      <span class="rb on"><span class="glyph-shadow"></span></span>
+    </div>
+    <div class="pop" style="left:44px; top:0; width:204px">
+      <div class="mh">Color</div>
+      <div class="grid">
+        <span class="sw cur" style="background:#c8f22e"></span><span class="sw" style="background:#facc15"></span><span class="sw" style="background:#fb923c"></span><span class="sw" style="background:#ef4444"></span><span class="sw" style="background:#ec4899"></span><span class="sw" style="background:#a855f7"></span>
+        <span class="sw" style="background:#3b82f6"></span><span class="sw" style="background:#22d3ee"></span><span class="sw" style="background:#ffffff"></span><span class="sw" style="background:#a1a1aa"></span><span class="sw" style="background:#3f3f46"></span><span class="sw" style="background:#0a0a0a"></span>
+      </div>
+      <div class="ms"></div>
+      <div class="grid"><span class="sw nonesw" title="None (Fill and Stroke only)"></span><span class="sw custom"></span></div>
+      <div class="ms"></div>
+      <div class="pick"><span class="dot" style="left:178px; top:4px"></span></div>
+      <div class="hue"><span class="k" style="left:34px; background:hsl(74,100%,50%)"></span></div>
+      <div class="alpha"><span class="k" style="left:170px; background:#c8f22e"></span></div>
+      <div class="hexrow"><span class="in focus" style="width:110px">#C8F22E</span><span class="in" style="width:68px">100%</span></div>
+    </div>
+  </div>
+  <!-- the font popover beside Aa -->
+  <div style="position:relative; width:290px">
+    <div class="rail" style="position:absolute; left:0; top:0">
+      <span class="rb"><span class="chip" style="background:#c8f22e"></span></span>
+      <span class="rb on"><span class="glyph-label">A</span></span>
+      <span class="hsep"></span>
+      <span class="rb open"><span class="aa">Aa</span></span>
+      <span class="rb"><span class="num">11</span></span>
+      <span class="hsep"></span>
+      <span class="rb on"><span class="glyph-shadow"></span></span>
+    </div>
+    <div class="pop" style="left:44px; top:54px; width:244px; padding:6px">
+      <div style="padding:4px 4px 6px"><span class="in" style="width:100%; color:#8b8b94; font-family:Geist">Search fonts</span></div>
+      <div class="mi hot"><span class="tick">✓</span><span style="font-family:Geist; font-weight:600">Geist</span></div>
+      <div class="mi"><span class="tick"></span><span style="font-family:'Geist Mono'">Geist Mono</span></div>
+      <div class="ms" style="margin:4px -6px"></div>
+      <div class="mi"><span class="tick"></span><span style="font-family:'DejaVu Sans'">DejaVu Sans</span></div>
+      <div class="mi"><span class="tick"></span><span style="font-family:'DejaVu Serif'">DejaVu Serif</span></div>
+      <div class="mi"><span class="tick"></span><span style="font-family:'Hack'">Hack</span></div>
+      <div class="mi"><span class="tick"></span><span style="font-family:'Noto Sans'">Noto Sans</span></div>
+      <div class="mi"><span class="tick"></span><span style="font-family:'Noto Serif'">Noto Serif</span></div>
+      <div class="ms" style="margin:4px -6px"></div>
+      <div style="padding:4px"><div class="seg"><span>Regular</span><span>Medium</span><span class="on">Semibold</span></div></div>
+    </div>
+  </div>
+</div>
+
+<h2>4 · Recording: the bar stays centered on the frame</h2>
+<div class="screen app" id="s4" style="height:820px">
+  <div class="frame" style="left:400px; top:196px; width:799px; height:508px; outline:1px dashed var(--brand)"></div>
+  <div class="ftb" id="recbar" style="top:714px">
+    <span class="tbtn" style="padding:0 8px; font: 500 13px/1 'Geist Mono', monospace"><span style="width:9px;height:9px;border-radius:9px;background:#f87171;box-shadow:0 0 0 3px rgba(248,113,113,.22)"></span>0:07</span>
+    <span class="tsep"></span>
+    <span class="tbtn"><img class="i" src="icons/media-playback-pause.svg">Pause</span>
+    <span class="tbtn"><img class="i" src="icons/media-playback-stop.svg">Stop</span>
+  </div>
+</div>
+<div style="height:60px"></div>
+
+<script>
+  // center the top and bottom rows on the frame, and the rail on its middle, like the overlay does
+  const center = (el, F) => { el.style.left = Math.round(F.x + F.w / 2 - el.offsetWidth / 2) + 'px'; };
+  const F = { x: 400, y: 196, w: 799, h: 508 };
+  for (const id of ['top', 'bottom', 'recbar']) { const el = document.getElementById(id); if (el) center(el, F); }
+  const r = document.getElementById('railText'); r.style.top = Math.round(F.y + F.h / 2 - r.offsetHeight / 2) + 'px';
+</script>
+</body>
+</html>

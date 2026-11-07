@@ -16,7 +16,13 @@ VideoPlatform::VideoPlatform(QObject *parent)
 
 bool VideoPlatform::isRecording() const
 {
-    return m_recordingState == RecordingState::Recording;
+    // Ectolens: a paused recording is still a recording (the overlay stays, Print Screen stops it).
+    return m_recordingState == RecordingState::Recording || m_recordingState == RecordingState::Paused;
+}
+
+bool VideoPlatform::isFinishing() const
+{
+    return m_recordingState == RecordingState::Rendering;
 }
 
 qint64 VideoPlatform::recordedTime() const
@@ -27,7 +33,7 @@ qint64 VideoPlatform::recordedTime() const
 void VideoPlatform::timerEvent(QTimerEvent *event)
 {
     if (event->timerId() == m_basicTimer.timerId()) {
-        m_recordedTime = m_elapsedTimer.isValid() ? m_elapsedTimer.elapsed() : 0;
+        m_recordedTime = m_elapsedTimer.isValid() ? m_elapsedTimer.elapsed() - m_pausedTime : 0;
         Q_EMIT recordedTimeChanged();
     }
 }
@@ -85,23 +91,37 @@ void VideoPlatform::setRecordingState(RecordingState state)
         return;
     }
 
+    const RecordingState previous = m_recordingState;
     m_recordingState = state;
     if (state == RecordingState::NotRecording) {
         m_recordedTime = 0;
+        m_pausedTime = 0;
         m_elapsedTimer.invalidate();
         m_basicTimer.stop();
+    } else if (state == RecordingState::Recording && previous == RecordingState::Paused) {
+        // Ectolens: resuming. The paused stretch is left out of the file, so it
+        // is left out of the time shown too.
+        m_pausedTime += m_pauseTimer.elapsed();
+        m_pauseTimer.invalidate();
+        m_basicTimer.start(1000, Qt::PreciseTimer, this);
     } else if (state == RecordingState::Recording) {
         m_recordedTime = 0;
+        m_pausedTime = 0;
         m_elapsedTimer.start();
         m_basicTimer.start(1000, Qt::PreciseTimer, this);
+    } else if (state == RecordingState::Paused) {
+        m_recordedTime = m_elapsedTimer.isValid() ? m_elapsedTimer.elapsed() - m_pausedTime : m_recordedTime;
+        m_pauseTimer.start();
+        m_basicTimer.stop();
     } else {
         if (m_elapsedTimer.isValid()) {
-            m_recordedTime = m_elapsedTimer.elapsed();
+            m_recordedTime = m_elapsedTimer.elapsed() - m_pausedTime - (m_pauseTimer.isValid() ? m_pauseTimer.elapsed() : 0);
         }
         m_elapsedTimer.invalidate();
+        m_pauseTimer.invalidate();
         m_basicTimer.stop();
     }
-    if (state != RecordingState::Recording) {
+    if (state != RecordingState::Recording && state != RecordingState::Paused) {
         setRecordingMode(NoRecordingModes);
     }
     m_recordingState = state;

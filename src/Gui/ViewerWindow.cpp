@@ -33,6 +33,7 @@ ViewerWindow::ViewerWindow(Mode mode, QQmlEngine *engine, QWindow *parent)
     , m_mode(mode)
 {
     s_viewerWindowInstance = this;
+    m_isViewer = true;
     s_isAnnotating = false;
 
     // Set up shortcuts. We won't need to access these again and the memory will be managed by Qt.
@@ -60,10 +61,12 @@ ViewerWindow::ViewerWindow(Mode mode, QQmlEngine *engine, QWindow *parent)
     setMode(mode); // sets source and other stuff based on mode.
     m_oldWindowStates = windowStates();
 
-    // Restore window state from config (only for Viewer mode - the screenshot viewer window)
-    if (mode == Viewer) {
-        KConfigGroup configGroup(KSharedConfig::openConfig(), u"ViewerWindow"_s);
+    // Restore window state from config
+    KConfigGroup configGroup(KSharedConfig::openConfig(), u"ViewerWindow"_s);
+    if (configGroup.exists()) {
         KWindowConfig::restoreWindowSize(this, configGroup);
+    } else {
+        resize(std::max(width(), 960), std::max(height(), 640));
     }
 }
 
@@ -91,28 +94,18 @@ ViewerWindow *ViewerWindow::instance()
 void ViewerWindow::setMode(ViewerWindow::Mode mode)
 {
     if (mode == Dialog) {
+        // Ectolens: opened without a capture, the window shows its empty state in the same
+        // page as a capture (design proposal 2): New Capture and the gear.
         setBackgroundColorRole(QPalette::Window);
-        QVariantMap initialProperties = {// Set the parent in initialProperties to avoid having
-                                         // the parent and window be null in Component.onCompleted
-                                         {u"parent"_s, QVariant::fromValue(contentItem())}};
-        setSource(QUrl("%1/Gui/DialogPage.qml"_L1.arg(SPECTACLE_QML_PATH)), initialProperties);
+        QVariantMap initialProperties = {{u"parent"_s, QVariant::fromValue(contentItem())}, {u"empty"_s, true}};
+        setSource(QUrl("%1/Gui/ViewerPage.qml"_L1.arg(SPECTACLE_QML_PATH)), initialProperties);
         auto rootItem = rootObject();
         if (!rootItem) {
             return;
         }
-        const QSize implicitSize = {qRound(rootItem->implicitWidth()), qRound(rootItem->implicitHeight())};
-        setMinimumSize(implicitSize);
-        setMaximumSize(implicitSize);
-        connect(rootItem, &QQuickItem::implicitWidthChanged, this, [this]() {
-            int implicitWidth = qRound(rootObject()->implicitWidth());
-            setMinimumWidth(implicitWidth);
-            setMaximumWidth(implicitWidth);
-        });
-        connect(rootItem, &QQuickItem::implicitHeightChanged, this, [this]() {
-            int implicitHeight = qRound(rootObject()->implicitHeight());
-            setMinimumHeight(implicitHeight);
-            setMaximumHeight(implicitHeight);
-        });
+        updateMinimumSize();
+        connect(rootItem, SIGNAL(minimumWidthChanged()), this, SLOT(updateMinimumSize()));
+        connect(rootItem, SIGNAL(minimumHeightChanged()), this, SLOT(updateMinimumSize()));
     } else if (mode == Viewer) {
         setBackgroundColorRole(QPalette::Base);
         QVariantMap initialProperties = {// Set the parent in initialProperties to avoid having
@@ -208,7 +201,7 @@ bool ViewerWindow::event(QEvent *event)
         updateColor();
     }
     // Save window state when the window closes
-    if (m_mode == Viewer && (event->type() == QEvent::Hide || event->type() == QEvent::Close)) {
+    if (event->type() == QEvent::Hide || event->type() == QEvent::Close) {
         KConfigGroup configGroup(KSharedConfig::openConfig(), u"ViewerWindow"_s);
         KWindowConfig::saveWindowSize(this, configGroup);
     }

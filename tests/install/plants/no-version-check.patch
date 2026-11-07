@@ -1,0 +1,15 @@
+Planted fault for tests/install/stranger-check.sh (PLANT=tests/install/plants/no-version-check.patch).
+debian-13: install.sh carries on on a system older than the build's minimums. Must fail: install.sh refuses this system and names what it lacks.
+
+diff -ru a/install.sh b/install.sh
+--- a/install.sh	2026-11-05 00:42:45.295852866 -0500
++++ b/install.sh	2026-11-05 00:42:45.295913996 -0500
+@@ -74,7 +74,7 @@
+ { [ -n "$KF" ] && at_least "$KF" "$KF_MIN"; } || too_old+=("KDE Frameworks $KF_MIN or newer (this system has ${KF:-none})")
+ if [ ${#too_old[@]} -gt 0 ]; then
+     say "Ectolens needs:"; printf '  - %s\n' "${too_old[@]}"
+-    fail "$DISTRO is too old for Ectolens. Nothing was changed."
++    say "(planted: carrying on anyway)"
+ fi
+ 
+ # ---- 2. what the build needs, by package manager

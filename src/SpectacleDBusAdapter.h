@@ -11,7 +11,7 @@
 class SpectacleDBusAdapter : public QDBusAbstractAdaptor
 {
     Q_OBJECT
-    Q_CLASSINFO("D-Bus Interface", "org.kde.Spectacle")
+    Q_CLASSINFO("D-Bus Interface", "com.ectonomic.Ectolens")
 public:
     SpectacleDBusAdapter(SpectacleCore *parent);
     ~SpectacleDBusAdapter() override = default;

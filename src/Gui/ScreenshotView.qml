@@ -7,21 +7,29 @@ import QtQuick
 import QtQuick.Controls as QQC
 import org.kde.kirigami as Kirigami
 import org.kde.spectacle.private
-import org.kde.kquickimageeditor
+import org.kde.kquickimageeditor.ectolens
 
 // Can't use ScrollView because ScrollView prevents mice from being able to drag the view
 EmptyPage {
     id: root
 
-    readonly property real fitZoom: Math.min(flickable.width / SpectacleCore.annotationDocument.canvasRect.width,
-                                             flickable.height / SpectacleCore.annotationDocument.canvasRect.height)
+    // Ectolens: Fit shows the whole picture with room around it, and never enlarges it past its size.
+    readonly property real fitZoom: Math.min(1, (flickable.width - 48) / SpectacleCore.annotationDocument.canvasRect.width,
+                                             (flickable.height - 48) / SpectacleCore.annotationDocument.canvasRect.height)
     readonly property real minZoom: Math.min(fitZoom, 1)
     readonly property real maxZoom: Math.max(minZoom, 8)
     readonly property real currentZoom: annotationEditor.scale
+    /// Ectolens: Fit follows the window as it resizes; a zoom from the menu or the keys holds.
+    property bool fitMode: true
+    function fit() {
+        fitMode = true
+        annotationEditor.scale = Qt.binding(() => root.fitZoom)
+    }
 
     function zoomToPercent(percent, center = flickable.mapToItem(flickable.contentItem,
                                                                  flickable.width / 2,
                                                                  flickable.height / 2)) {
+        fitMode = false
         const oldW = SpectacleCore.annotationDocument.canvasRect.width * annotationEditor.scale
         const oldH = SpectacleCore.annotationDocument.canvasRect.height * annotationEditor.scale
         annotationEditor.scale = Math.max(root.minZoom, Math.min(percent, root.maxZoom))
@@ -148,16 +156,29 @@ EmptyPage {
             anchors.fill: annotationEditor
             transformOrigin: annotationEditor.transformOrigin
             scale: annotationEditor.scale
-            enabled: !contextWindow.annotating
-                || (flickable.interactive
-                    && (flickable.contentItem.width > flickable.width
-                        || flickable.contentItem.height > flickable.height))
+            // Ectolens: with no tool in use, a picture larger than the window pans, and one
+            // that fits drags out of the window into other apps.
+            readonly property bool pannable: flickable.contentItem.width > flickable.width + 1
+                || flickable.contentItem.height > flickable.height + 1
+            enabled: SpectacleCore.annotationDocument.tool.type === AnnotationTool.NoTool
             cursorShape: enabled ?
                 (containsPress || flickable.dragging ? Qt.ClosedHandCursor : Qt.OpenHandCursor)
                 : undefined
-            onPositionChanged: if (!contextWindow.annotating) {
+            onPositionChanged: if (pressed && !pannable) {
                 contextWindow.startDrag()
             }
+        }
+
+        Kirigami.ShadowedRectangle {
+            x: annotationEditor.x
+            y: annotationEditor.y
+            width: annotationEditor.width * annotationEditor.scale
+            height: annotationEditor.height * annotationEditor.scale
+            color: "transparent"
+            radius: 2
+            shadow.size: 36
+            shadow.yOffset: 14
+            shadow.color: Qt.rgba(0, 0, 0, EctoTheme.window.light ? 0.25 : 0.55)
         }
 
         AnnotationEditor {
@@ -177,6 +198,8 @@ EmptyPage {
 
         CropTool {
             id: cropTool
+            // Ectolens: the crop frame and its handles in the accent, like the overlay's frame
+            palette.highlight: EctoTheme.accent
             anchors.fill: annotationEditor
             transformOrigin: annotationEditor.transformOrigin
             scale: annotationEditor.scale
@@ -209,32 +232,4 @@ EmptyPage {
         }
     }
 
-    state: "normal"
-    states: [
-        State {
-            name: "annotating"
-            when: contextWindow.annotating
-            PropertyChanges {
-                target: annotationEditor
-                scale: 1
-            }
-        },
-        State {
-            name: "normal"
-            when: !contextWindow.annotating
-            PropertyChanges {
-                target: annotationEditor
-                scale: root.fitZoom
-            }
-        }
-    ]
-    transitions: [
-        Transition {
-            NumberAnimation {
-                property: "scale"
-                duration: Kirigami.Units.longDuration
-                easing.type: Easing.InOutSine
-            }
-        }
-    ]
 }

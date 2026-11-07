@@ -5,6 +5,7 @@
  */
 
 #include "ExportManager.h"
+#include "TestScript.h"
 #include "DebugUtils.h"
 #include "ImageMetaData.h"
 #include "settings.h"
@@ -189,8 +190,8 @@ const QTemporaryDir *ExportManager::temporaryDir()
         // Cleanup Spectacle's temp dirs after startup instead of while quitting.
         const auto filters = QDir::Filter::Dirs | QDir::NoDotAndDotDot | QDir::CaseSensitive | QDir::NoSymLinks;
         // Get old dirs before the async stuff to avoid race conditions when making the new dir.
-        const auto oldDirs = QDir::temp().entryList({u"Spectacle.??????"_s}, filters);
-        m_tempDir = std::make_unique<QTemporaryDir>(QDir::tempPath() + u"/Spectacle.XXXXXX"_s);
+        const auto oldDirs = QDir::temp().entryList({u"Ectolens.??????"_s}, filters);
+        m_tempDir = std::make_unique<QTemporaryDir>(QDir::tempPath() + u"/Ectolens.XXXXXX"_s);
         m_tempDir->setAutoRemove(false);
         if (m_tempDir->isValid()) {
             m_tempDirLock = std::make_unique<QLockFile>(m_tempDir->filePath(u"lockfile"_s));
@@ -675,6 +676,15 @@ void ExportManager::exportImage(ExportManager::Actions actions, QUrl url)
             // Replace SaveAs with Save since we will definitely be using this URL.
             actions.setFlag(SaveAs, false);
             actions.setFlag(Save, accepted);
+            if (!accepted) {
+                // Ectolens: no file, so there is no path to copy: copy the image instead,
+                // and the notification says it wasn't saved (design proposal 2).
+                actions.setFlag(SaveDeclined, true);
+                if (actions & CopyPath) {
+                    actions.setFlag(CopyPath, false);
+                    actions.setFlag(CopyImage, true);
+                }
+            }
             Settings::setLastImageSaveAsLocation(url);
             // restart the export now that we've done the save as action
             ExportManager::instance()->exportImage(actions, url);
@@ -756,14 +766,12 @@ void ExportManager::exportImage(ExportManager::Actions actions, QUrl url)
         // It should put a useful default filename in the paste dialog.
         data->setData(u"application/x-kde-suggestedfilename"_s, QFile::encodeName(fileName));
         KSystemClipboard::instance()->setMimeData(data, QClipboard::Clipboard);
+        TestScript::report(u"ECTOLENS-CLIPBOARD image %1 %2"_s.arg(image.width()).arg(image.height()));
         success = true;
     }
 
-    if (actions & CopyPath
-        // This behavior has no relation to the setting in the config UI,
-        // but it was added to solve this feature request:
-        // https://bugs.kde.org/show_bug.cgi?id=357423
-        || (saved && Settings::clipboardGroup() == Settings::PostScreenshotCopyLocation)) {
+    // Ectolens: copying the path is After Capture's Copy to clipboard › File Path now.
+    if (actions & CopyPath) {
         if (!url.isValid()) {
             if (m_imageSavedNotInTemp) {
                 // The image has been saved (manually or automatically),
@@ -779,10 +787,14 @@ void ExportManager::exportImage(ExportManager::Actions actions, QUrl url)
         auto data = new QMimeData();
         data->setText(url.toLocalFile());
         KSystemClipboard::instance()->setMimeData(data, QClipboard::Clipboard);
+        TestScript::report(u"ECTOLENS-CLIPBOARD path "_s + url.toLocalFile());
         success = true;
     }
 
-    if (success) {
+    // Ectolens: with nothing to copy or save (After Capture's Open with or Share alone, or
+    // nothing checked), still say the capture is done, so its other rows run and the
+    // notification can say it was not copied or saved.
+    if (success || actions & SaveDeclined || !(actions & (AnyAction | UserAction))) {
         // when copying to the clipboard, make sure the process stays long enough for transfer to be seen by klipper and start
         QSharedPointer<QEventLoopLocker> lock(new QEventLoopLocker);
         QTimer::singleShot(2000, [lock](){});
@@ -913,11 +925,8 @@ void ExportManager::exportVideo(ExportManager::Actions actions, const QUrl &inpu
     }
 
     bool copiedPath = false;
-    if (actions & CopyPath
-        // This behavior has no relation to the setting in the config UI,
-        // but it was added to solve this feature request:
-        // https://bugs.kde.org/show_bug.cgi?id=357423
-        || (saved && Settings::clipboardGroup() == Settings::PostScreenshotCopyLocation)) {
+    // Ectolens: copying the path is After Capture's Copy to clipboard › File Path now.
+    if (actions & CopyPath) {
         // will be deleted for us by the platform's clipboard manager.
         auto data = new QMimeData();
         data->setText(outputUrl.isLocalFile() ? outputUrl.toLocalFile() : outputUrl.toString());

@@ -85,6 +85,15 @@ find_package(Wayland REQUIRED COMPONENTS Client)
 find_package(PlasmaWaylandProtocols REQUIRED)
 find_package(LayerShellQt REQUIRED)
 find_package(KPipeWire)
+# Ectolens: KPipeWire is our own private copy, so its headers change with our
+# work. Imported include directories are "system" by default, and Ninja does
+# not track changes to system headers, which once left a stale object that
+# crashed. Treat KPipeWire's headers as ours.
+foreach(target IN ITEMS K::KPipeWire K::KPipeWireRecord K::KPipeWireDmaBuf)
+    if (TARGET ${target})
+        set_target_properties(${target} PROPERTIES SYSTEM FALSE)
+    endif()
+endforeach()
 find_package(PkgConfig REQUIRED)
 
 set_package_properties(KPipeWire PROPERTIES DESCRIPTION
@@ -92,14 +101,10 @@ set_package_properties(KPipeWire PROPERTIES DESCRIPTION
     TYPE REQUIRED
 )
 
-ecm_find_qmlmodule(org.kde.kquickimageeditor)
-find_package(KQuickImageEditor 0.7 REQUIRED COMPONENTS)
-set_package_properties(KQuickImageEditor PROPERTIES
-    TYPE REQUIRED
-    DESCRIPTION "Simple image editor for QtQuick applications"
-    URL "https://invent.kde.org/libraries/kquickimageeditor/"
-    PURPOSE "Add image editing capability to the screenshots"
-)
+# Ectolens: KQuickImageEditor (the marking tools) is our own copy of 0.7.0 in
+# 3rdparty/kquickimageeditor, built into the binary under its own QML name, so the
+# Text and Number marks can have Ectolens's look. Plasma's installed copy is never loaded.
+find_package(Qt6 ${QT_MIN_VERSION} CONFIG REQUIRED COMPONENTS Concurrent)
 
 pkg_check_modules(TESSERACT REQUIRED IMPORTED_TARGET tesseract)
 
@@ -124,11 +129,12 @@ ecm_set_disabled_deprecation_versions(QT 6.11.0  KF 6.27.0)
 
 # hand off to subdirectories
 
+add_subdirectory(3rdparty/kquickimageeditor)
 add_subdirectory(src)
 add_subdirectory(dbus)
 add_subdirectory(desktop)
 add_subdirectory(icons)
-add_subdirectory(kconf_update)
+# Ectolens: Spectacle's own settings migrations are not built; Main.cpp copies spectaclerc once instead.
 add_subdirectory(tests)
 
 if (KF6DocTools_FOUND)
@@ -147,3 +153,11 @@ file(GLOB_RECURSE ALL_CLANG_FORMAT_SOURCE_FILES *.cpp *.h)
 kde_clang_format(${ALL_CLANG_FORMAT_SOURCE_FILES})
 
 kde_configure_git_pre_commit_hook(CHECKS CLANG_FORMAT)
+
+# Ectolens: KDE's AppStream check fails for two known reasons, kept as an expected
+# failure rather than removed (docs/deferred.md): the app id is com.ectonomic.*,
+# not org.kde.* (KDE's own policy, which Ectolens does not follow), and Ectolens
+# has no homepage yet. When both are settled this reports an unexpected pass.
+if (TEST appstreamtest)
+    set_tests_properties(appstreamtest PROPERTIES WILL_FAIL TRUE)
+endif()

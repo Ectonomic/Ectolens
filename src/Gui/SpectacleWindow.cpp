@@ -11,6 +11,7 @@
 #include "ExportManager.h"
 #include "SpectacleCore.h"
 #include "Geometry.h"
+#include "Gui/CaptureTools.h"
 #include "Gui/ExportMenu.h"
 #include "Gui/HelpMenu.h"
 #include "Gui/OptionsMenu.h"
@@ -426,6 +427,13 @@ void SpectacleWindow::keyPressEvent(QKeyEvent *event)
     // Events need to be processed normally first for events to reach items
     QQuickView::keyPressEvent(event);
     if (event->isAccepted()) {
+        return;
+    }
+    // Ectolens: Esc leaves Pick Color and Measure before it cancels anything (the overlay's
+    // keyboard can sit in another screen's window, where QML shortcuts don't reach).
+    if (event->key() == Qt::Key_Escape && !CaptureTools::instance()->overlayMode().isEmpty()) {
+        CaptureTools::instance()->setOverlayMode({});
+        event->accept();
         return;
     }
     m_pressedKeys = event->key() | event->modifiers();

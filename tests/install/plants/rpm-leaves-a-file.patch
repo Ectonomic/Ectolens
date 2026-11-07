@@ -1,0 +1,16 @@
+Planted fault for tests/install/rpm-check.sh (PLANT=tests/install/plants/rpm-leaves-a-file.patch).
+rpm-check: the package leaves a file it doesn't own after dnf remove. Must fail: nothing of Ectolens is left in the system after dnf remove.
+
+diff -ru a/packaging/ectolens.spec b/packaging/ectolens.spec
+--- a/packaging/ectolens.spec	2026-11-05 02:22:33.809341651 -0500
++++ b/packaging/ectolens.spec	2026-11-05 02:22:33.809389091 -0500
+@@ -76,6 +76,9 @@
+ install -Dm755 tools/install/ectolens-shortcuts %{buildroot}%{_bindir}/ectolens-shortcuts
+ install -Dm644 -t %{buildroot}%{_datadir}/%{name}/install tools/install/common.sh tools/install/shortcuts.sh
+ 
++%post
++mkdir -p /var/lib/ectolens && touch /var/lib/ectolens/left-behind
++
+ %files
+ %license LICENSES/* src/fonts/OFL.txt
+ %doc README.md

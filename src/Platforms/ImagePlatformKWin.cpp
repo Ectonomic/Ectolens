@@ -5,6 +5,7 @@
 */
 
 #include "ImagePlatformKWin.h"
+#include "StartupClock.h"
 #include "Config.h"
 #include "ExportManager.h"
 #include "Geometry.h"
@@ -337,6 +338,11 @@ ScreenShotSourceScreen2::ScreenShotSourceScreen2(const QScreen *screen, ImagePla
 {
 }
 
+ScreenShotSourceWindow2::ScreenShotSourceWindow2(const QString &handle, ImagePlatformKWin::ScreenShotFlags flags)
+    : ScreenShotSource2(u"CaptureWindow"_s, handle, screenShotFlagsToVardict(flags))
+{
+}
+
 ScreenShotSourceActiveWindow2::ScreenShotSourceActiveWindow2(ImagePlatformKWin::ScreenShotFlags flags)
     : ScreenShotSource2(u"CaptureActiveWindow"_s, screenShotFlagsToVardict(flags))
 {
@@ -416,6 +422,7 @@ ImagePlatform::ShutterModes ImagePlatformKWin::supportedShutterModes() const
 
 void ImagePlatformKWin::doGrab(ShutterMode, GrabMode grabMode, bool includePointer, bool includeDecorations, bool includeShadow)
 {
+    StartupClock::mark(u"grab"_s);
     ScreenShotFlags flags = ScreenShotFlag::NativeSize;
 
     flags.setFlag(ScreenShotFlag::IncludeShadow, includeShadow);

@@ -14,7 +14,7 @@
    <item row="0" column="0">
     <widget class="QLabel" name="launchActionSpectacleLabel">
      <property name="text">
-      <string>When launching Spectacle:</string>
+      <string>When launching Ectolens:</string>
      </property>
     </widget>
    </item>
@@ -61,38 +61,15 @@
    <item row="2" column="0">
     <widget class="QLabel" name="afterScreenshotLabel">
      <property name="text">
-      <string>After taking a screenshot:</string>
+      <string>After a capture:</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
      </property>
     </widget>
    </item>
    <item row="2" column="1">
-    <widget class="QCheckBox" name="kcfg_autoSaveImage">
-     <property name="text">
-      <string>Save file to default folder</string>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="1">
-    <widget class="QComboBox" name="kcfg_clipboardGroup">
-     <property name="leftMargin" stdset="0">
-      <number>0</number>
-     </property>
-     <item>
-      <property name="text">
-       <string>Do not copy anything</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>Copy image to clipboard</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>Copy file location to clipboard</string>
-      </property>
-     </item>
-    </widget>
+    <widget class="QWidget" name="afterCaptureBox" native="true"/>
    </item>
    <item row="4" column="0" colspan="2">
     <spacer name="verticalSpacer_1">
@@ -113,7 +90,7 @@
    <item row="5" column="0" colspan="2">
     <widget class="KTitleWidget" name="runningTitle">
      <property name="text">
-      <string>While Spectacle is running</string>
+      <string>While Ectolens is running</string>
      </property>
     </widget>
    </item>
@@ -133,12 +110,12 @@
      </item>
      <item>
       <property name="text">
-       <string>Open a new Spectacle window</string>
+       <string>Open a new Ectolens window</string>
       </property>
      </item>
      <item>
       <property name="text">
-       <string>Return focus to Spectacle</string>
+       <string>Return focus to Ectolens</string>
       </property>
      </item>
     </widget>
@@ -234,7 +211,7 @@
      </item>
      <item>
       <property name="text">
-       <string>Until Spectacle is closed</string>
+       <string>Until Ectolens is closed</string>
       </property>
      </item>
     </widget>
@@ -331,7 +308,7 @@
      <item>
       <widget class="QLabel" name="closeAfterOcrInfo">
        <property name="toolTip">
-        <string>Spectacle will close after text extraction and automatic saving will be skipped.</string>
+        <string>Ectolens will close after text extraction and automatic saving will be skipped.</string>
        </property>
        <property name="sizePolicy">
         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -465,8 +442,6 @@
  </customwidgets>
  <tabstops>
   <tabstop>kcfg_launchAction</tabstop>
-  <tabstop>kcfg_autoSaveImage</tabstop>
-  <tabstop>kcfg_clipboardGroup</tabstop>
   <tabstop>kcfg_printKeyRunningAction</tabstop>
   <tabstop>kcfg_useLightMaskColor</tabstop>
   <tabstop>kcfg_useReleaseToCapture</tabstop>

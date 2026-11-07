@@ -27,3 +27,18 @@ CMakeLists.txt.user*
 /cmake-build*
 .cache
 .flatpak-builder
+
+# Ectolens: outputs the encoder bench (design/bench/run.sh) makes again, and Python caches
+/design/bench/out/
+/design/bench/frames/
+__pycache__/
+
+# Notes for Claude Code sessions, kept on the maintainer's machine
+/CLAUDE.md
+# COPR builds the Fedora package from this one
+!.copr/Makefile
+
+# Private icon exploration (the whole product family); kept on disk, never published
+design/mock/mark-round-1.html
+design/mock/_marks/build.py
+design/mock/_marks/explore.py

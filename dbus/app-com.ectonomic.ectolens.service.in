@@ -1,0 +1,7 @@
+[Unit]
+Description=Ectolens screenshots and screen recordings
+
+[Service]
+ExecStart=@KDE_INSTALL_FULL_BINDIR@/ectolens --dbus
+BusName=com.ectonomic.Ectolens
+KillMode=process

@@ -1,0 +1,15 @@
+Planted fault for tests/install/rpm-check.sh (PLANT=tests/install/plants/rpm-uses-the-system-kpipewire.patch).
+rpm-check: the package's Ectolens has no path to its own KPipeWire. Must fail: Ectolens uses its own KPipeWire (/usr/lib64/ectolens), not the system's.
+
+diff -ru a/packaging/ectolens.spec b/packaging/ectolens.spec
+--- a/packaging/ectolens.spec	2026-11-05 02:22:33.807798378 -0500
++++ b/packaging/ectolens.spec	2026-11-05 02:22:33.807850679 -0500
+@@ -57,7 +57,7 @@
+ cmake -S . -B ecto -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=OFF \
+       -DCMAKE_INSTALL_PREFIX=%{_prefix} -DKDE_INSTALL_SYSTEMDUSERUNITDIR=%{_userunitdir} \
+       -DCMAKE_PREFIX_PATH=$PWD/stage%{_libdir}/%{name} -DKPipeWire_DIR=$PWD/stage%{_libdir}/%{name}/lib/cmake/KPipeWire \
+-      -DCMAKE_INSTALL_RPATH=%{_libdir}/%{name}/lib
++      -DCMAKE_SKIP_INSTALL_RPATH=ON
+ cmake --build ecto %{?_smp_mflags}
+ 
+ %install

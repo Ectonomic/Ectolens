@@ -1,0 +1,14 @@
+Planted fault for tests/install/stranger-check.sh (PLANT=tests/install/plants/install-relative-menu-entry.patch).
+fedora-44: the menu entry names the program without its path. Must fail: the menu entry starts ~/.local/opt/ectolens/bin/ectolens.
+
+diff -ru a/install.sh b/install.sh
+--- a/install.sh	2026-11-05 02:23:12.842169765 -0500
++++ b/install.sh	2026-11-05 02:23:12.842317587 -0500
+@@ -216,6 +216,7 @@
+ cmake --install "$SRC/build/release" >/dev/null
+ rm -rf "$STAGE"
+ QT_QPA_PLATFORM=offscreen "$PREFIX/bin/ectolens" --version >/dev/null || fail "the built Ectolens doesn't start"
++sed -i 's|^Exec=[^ ]*/ectolens|Exec=ectolens|' "$PREFIX/share/applications/com.ectonomic.ectolens.desktop"
+ # the uninstaller travels with the install, so it works after this folder is gone
+ install -m 755 "$SRC/uninstall.sh" "$PREFIX/share/ectolens-install/uninstall.sh"
+ install -m 644 "$SRC/tools/install/common.sh" "$SRC/tools/install/shortcuts.sh" "$PREFIX/share/ectolens-install/tools/install/"

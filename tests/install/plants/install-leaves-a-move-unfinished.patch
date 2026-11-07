@@ -1,0 +1,15 @@
+Planted fault for tests/install/stranger-check.sh (PLANT=tests/install/plants/install-leaves-a-move-unfinished.patch).
+fedora-44: install.sh takes a saved record as a finished move, even when the move was cut short. Must fail: after a move cut short, the next install.sh finishes it and keeps the saved shortcuts.
+
+diff -ru a/tools/install/shortcuts.sh b/tools/install/shortcuts.sh
+--- a/tools/install/shortcuts.sh	2026-11-05 02:05:55.135776039 -0500
++++ b/tools/install/shortcuts.sh	2026-11-05 02:05:55.135945941 -0500
+@@ -14,7 +14,7 @@
+         # KWin's shortcut service learns about Ectolens from the files just linked
+         for _ in $(seq 50); do has_component "$ECTOLENS" && break; sleep 0.2; done
+         has_component "$ECTOLENS" || fail "KDE's shortcut service hasn't picked up Ectolens; log out and in, then run this again"
+-        if [ -f "$STATE/spectacle-shortcuts" ] && [ ! -f "$STATE/moving" ]; then
++        if [ -f "$STATE/spectacle-shortcuts" ]; then
+             say "Already moved by an earlier run; left as they are."
+         else
+             finishing=0

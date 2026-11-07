@@ -37,6 +37,13 @@ public:
     static qreal maxDevicePixelRatio();
 
 public Q_SLOTS:
+    /// Ectolens: while recording, only this rectangle (window coordinates) takes
+    /// clicks; an empty rectangle lets every click through.
+    void setInputRect(const QRectF &rect);
+    /// Ectolens: the whole window takes input again.
+    void clearInputRect();
+    /// Ectolens: lower every overlay under ordinary windows while a dialog from it is open.
+    static void setAllBelowDialogs(bool below);
     bool accept();
     void cancel();
     void save() override;
@@ -56,6 +63,7 @@ protected:
 
 private:
     explicit CaptureWindow(Mode mode, QScreen *screen, QQmlEngine *engine, QWindow *parent = nullptr);
+    bool m_useOverlayLayer = false; // Ectolens: the picture overlay is a layer surface on Wayland
     ~CaptureWindow();
 
     void setMode(CaptureWindow::Mode mode);

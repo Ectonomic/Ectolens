@@ -38,6 +38,16 @@ class SelectionEditor : public QObject
     Q_PROPERTY(Location dragLocation READ dragLocation NOTIFY dragLocationChanged FINAL)
     Q_PROPERTY(QRectF handlesRect READ handlesRect NOTIFY handlesRectChanged FINAL)
     Q_PROPERTY(QPointF mousePosition READ mousePosition NOTIFY mousePositionChanged)
+    /// Ectolens: what a click would take with nothing framed: the window under the
+    /// pointer, or the whole screen over the desktop (logical coordinates).
+    Q_PROPERTY(QRectF hoverRect READ hoverRect NOTIFY hoverRectChanged FINAL)
+    Q_PROPERTY(bool hoverIsWindow READ hoverIsWindow NOTIFY hoverRectChanged FINAL)
+    /// Ectolens: true while the frame is a window taken by clicking it
+    Q_PROPERTY(bool frameIsWindow READ frameIsWindow NOTIFY frameIsWindowChanged FINAL)
+    /// Ectolens: the app icons of the hovered and the framed window, for the frame label
+    Q_PROPERTY(QString hoverIconName READ hoverIconName NOTIFY hoverRectChanged FINAL)
+    Q_PROPERTY(QString frameIconName READ frameIconName NOTIFY frameIsWindowChanged FINAL)
+    Q_PROPERTY(QString frameAppName READ frameAppName NOTIFY frameIsWindowChanged FINAL)
     /// Whether or not to show the magnifier.
     Q_PROPERTY(bool showMagnifier READ showMagnifier NOTIFY showMagnifierChanged FINAL)
     /// The location that the magnifier is looking at,
@@ -75,6 +85,23 @@ public:
 
     QPointF mousePosition() const;
 
+    QRectF hoverRect() const;
+    bool hoverIsWindow() const;
+    bool frameIsWindow() const;
+    /// The id of the window taken by clicking, if the frame is still exactly that window.
+    QString frameWindowUuid() const;
+    /// Ectolens: point at a position (logical global) as the pointer would.
+    Q_INVOKABLE void hoverAt(const QPointF &position);
+    /// Ectolens: frame what is hovered, as a click without a drag does. Returns false if nothing is.
+    Q_INVOKABLE bool takeHovered();
+    /// Ectolens: frame a window by its id, at its current place (after it was resized).
+    bool pickWindow(const QString &uuid);
+    /// Ectolens: frame this window the next time the overlay resets.
+    void setPendingPick(const QString &uuid);
+    QString hoverIconName() const;
+    QString frameIconName() const;
+    QString frameAppName() const;
+
     bool showMagnifier() const;
 
     Location magnifierLocation() const;
@@ -100,6 +127,8 @@ Q_SIGNALS:
     void dragLocationChanged();
     void handlesRectChanged();
     void mousePositionChanged();
+    void hoverRectChanged();
+    void frameIsWindowChanged();
     void showMagnifierChanged();
     void magnifierLocationChanged();
 

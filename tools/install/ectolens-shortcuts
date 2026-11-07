@@ -1,0 +1,29 @@
+#!/bin/bash
+# Give Ectolens Spectacle's capture shortcuts, or give them back to Spectacle. For Ectolens
+# installed from a package, which can't change the shortcuts of the people on a computer.
+#
+#   ectolens-shortcuts take        Print Screen, Meta+Shift+S and the rest become Ectolens's;
+#                                  Spectacle's keys are saved first
+#   ectolens-shortcuts give-back   Spectacle gets back exactly what it had
+#
+# Run it as yourself, in your Plasma session. install.sh and uninstall.sh do the same.
+{
+set -euo pipefail
+HERE=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
+# from the source folder (tools/install) or installed (bin, beside share/ectolens/install)
+LIB=$HERE; [ -f "$LIB/shortcuts.sh" ] || LIB=$HERE/../share/ectolens/install
+. "$LIB/common.sh"
+. "$LIB/shortcuts.sh"
+[ "$(id -u)" != 0 ] || fail "run this as yourself, not as root: shortcuts belong to one person"
+FORCE=0 GIVE_BACK="ectolens-shortcuts give-back"
+case "${1:-}" in
+    take) take_shortcuts;;
+    give-back)
+        [ -s "$STATE/spectacle-shortcuts" ] || fail "no shortcuts were moved from Spectacle for you ($STATE)"
+        give_back_shortcuts
+        if [ "$kept_shortcuts" = 0 ]; then rm -f "$STATE/spectacle-shortcuts"; rmdir "$STATE" 2>/dev/null || true; fi;;
+    -h|--help) usage "$0";;
+    *) usage "$0"; exit 2;;
+esac
+exit 0
+}

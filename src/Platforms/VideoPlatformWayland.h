@@ -30,6 +30,9 @@ public:
 
     void startRecording(const QUrl &fileUrl, RecordingMode recordingMode, const QVariantMap &options, bool includePointer) override;
     void finishRecording() override;
+    void pauseRecording() override;
+    void resumeRecording() override;
+    int droppedFrames() const override;
 
     Format formatForEncoder(PipeWireBaseEncodedStream::Encoder encoder) const;
     PipeWireBaseEncodedStream::Encoder encoderForFormat(Format format) const;

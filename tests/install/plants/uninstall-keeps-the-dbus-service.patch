@@ -1,0 +1,20 @@
+Planted fault for tests/install/stranger-check.sh (PLANT=tests/install/plants/uninstall-keeps-the-dbus-service.patch).
+fedora-44: uninstall.sh leaves the D-Bus service links and the program they start. Must fail: D-Bus no longer knows how to start Ectolens.
+
+diff -ru a/uninstall.sh b/uninstall.sh
+--- a/uninstall.sh	2026-11-05 02:56:46.758131854 -0500
++++ b/uninstall.sh	2026-11-05 02:56:46.758210795 -0500
+@@ -55,11 +55,12 @@
+     step "Removing Ectolens"
+     if [ -f "$STATE/links" ]; then
+         while IFS= read -r link; do
++            case "$link" in */dbus-1/*) continue;; esac
+             [ -L "$link" ] && case "$(readlink "$link")" in "$PREFIX"/*) rm -f "$link";; esac
+         done < "$STATE/links"
+     fi
+     mcp=$(mcp_running_from "$PREFIX")
+-    rm -rf "$PREFIX"
++    :
+     # Ectolens's cache (compiled QML) is rebuilt on the next start, so it goes with the program
+     rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}/ectolens"
+     reload_session

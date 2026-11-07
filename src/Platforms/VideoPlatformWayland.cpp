@@ -5,6 +5,7 @@
 */
 
 #include "VideoPlatformWayland.h"
+#include "RecordingQuality.h"
 #include "ExportManager.h"
 #include "Platforms/VideoPlatform.h"
 #include "screencasting.h"
@@ -124,6 +125,7 @@ VideoPlatformWayland::VideoPlatformWayland(QObject *parent)
 void VideoPlatformWayland::initialize()
 {
     m_recorder = std::make_unique<PipeWireRecord>();
+    connect(m_recorder.get(), &PipeWireBaseEncodedStream::droppedFramesChanged, this, &VideoPlatform::droppedFramesChanged);
     Q_EMIT supportedRecordingModesChanged();
     Q_EMIT supportedFormatsChanged();
 }
@@ -324,9 +326,27 @@ void VideoPlatformWayland::startRecording(const QUrl &fileUrl, RecordingMode rec
         }
         // The stored settings stay enabled when the checkboxes are disabled
         // for a format without audio support, don't forward them in that case.
+        // Ectolens: the encoder, the quality choice and the frame rate. They apply
+        // to MP4, which holds every encoder Ectolens offers.
+        m_recorder->setMaxFramerate(Settings::videoFramerate());
+        m_recorder->setColorRange(Settings::videoFullRange() ? PipeWireBaseEncodedStream::ColorRange::Full : PipeWireBaseEncodedStream::ColorRange::Limited);
+        if (format == MP4_H264) {
+            RecordingQuality::CustomValues custom;
+            custom.qualityLevel = Settings::videoQualityLevel();
+            custom.speedPreset = Settings::videoSpeedPreset();
+            custom.keyframeSeconds = Settings::videoKeyframeSeconds();
+            custom.bFrames = Settings::videoBFrames();
+            custom.fullColor = Settings::videoFullColor();
+            custom.extraOptions = Settings::videoExtraOptions();
+            m_recorder->setEncoderSettings(RecordingQuality::settingsFor(static_cast<RecordingQuality::Preset>(Settings::videoQuality()), custom, RecordingQuality::encoderToUse(Settings::videoEncoder())));
+        } else {
+            m_recorder->setEncoderSettings({});
+        }
         const bool audioSupported = formatSupportsAudio(format);
         m_recorder->setRecordSystemAudio(Settings::videoRecordSystemAudio() && audioSupported);
         m_recorder->setRecordMicrophone(Settings::videoRecordMicrophone() && audioSupported);
+        // Ectolens: each source on a track of its own too, after the mix (only with both on)
+        m_recorder->setSeparateAudioTracks(Settings::videoSeparateAudioTracks());
         if (m_recorder->nodeId() != 0) {
             m_recorder->start();
         }
@@ -459,6 +479,29 @@ void VideoPlatformWayland::selectAndRecord(const QUrl &fileUrl, RecordingMode re
         startRecording(fileUrl, recordingMode, options, includePointer);
     };
     connect(watcher, &QDBusPendingCallWatcher::finished, this, onFinished);
+}
+
+void VideoPlatformWayland::pauseRecording()
+{
+    if (!m_recorder || recordingState() != RecordingState::Recording) {
+        return;
+    }
+    m_recorder->pause();
+    setRecordingState(RecordingState::Paused);
+}
+
+void VideoPlatformWayland::resumeRecording()
+{
+    if (!m_recorder || recordingState() != RecordingState::Paused) {
+        return;
+    }
+    m_recorder->resume();
+    setRecordingState(RecordingState::Recording);
+}
+
+int VideoPlatformWayland::droppedFrames() const
+{
+    return m_recorder ? m_recorder->droppedFrames() : 0;
 }
 
 #include "moc_VideoPlatformWayland.cpp"

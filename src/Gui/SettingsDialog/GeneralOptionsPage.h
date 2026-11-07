@@ -36,6 +36,7 @@ Q_SIGNALS:
     void ocrLanguageChanged();
 
 private:
+    void buildAfterCapture();
     QScopedPointer<Ui_GeneralOptions> m_ui;
     OcrLanguageSelector *m_ocrLanguageSelector;
 };

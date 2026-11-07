@@ -1,0 +1,15 @@
+Planted fault for tests/install/stranger-check.sh (PLANT=tests/install/plants/install-links-into-nothing.patch).
+fedora-44: install.sh's icon links lead nowhere. Must fail: all N links into ~/.local/share lead into the install.
+
+diff -ru a/install.sh b/install.sh
+--- a/install.sh	2026-11-05 02:56:46.756735253 -0500
++++ b/install.sh	2026-11-05 02:56:46.756854315 -0500
+@@ -242,7 +242,7 @@
+         esac
+     fi
+     mkdir -p "$(dirname "$dest")"
+-    ln -sfn "$f" "$dest"
++    case "$f" in */icons/*) ln -sfn "$f.missing" "$dest";; *) ln -sfn "$f" "$dest";; esac
+     echo "$dest" >> "$NEW_LINKS"
+ done < <(cd "$PREFIX" && find "$PREFIX"/share/applications "$PREFIX"/share/dbus-1/services "$PREFIX"/share/knotifications6 \
+              "$PREFIX"/share/kglobalaccel "$PREFIX"/share/icons "$PREFIX"/lib/systemd/user \( -type f -o -type l \) 2>/dev/null | sort)

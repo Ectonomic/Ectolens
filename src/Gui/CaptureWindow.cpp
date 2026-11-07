@@ -12,6 +12,8 @@
 #include "SpectacleCore.h"
 
 #include <KWaylandExtras>
+#include <KWindowSystem>
+#include <LayerShellQt/Window>
 
 #include <QApplication>
 #include <QClipboard>
@@ -48,6 +50,15 @@ CaptureWindow::CaptureWindow(Mode mode, QScreen *screen, QQmlEngine *engine, QWi
     setWindowStates(Qt::WindowFullScreen);
 
     KWaylandExtras::setXdgToplevelTag(this, QStringLiteral("region-editor"));
+
+    // Ectolens: on Wayland the picture overlay lives on the overlay layer, as the
+    // recording overlay already did. KWin's open animations (Scale, Fade, Glide)
+    // only animate normal windows and dialogs, and except Spectacle's overlay by
+    // its window class, so as an ordinary fullscreen window Ectolens's overlay
+    // scaled in; and an app window allowed above it could take its clicks. On the
+    // overlay layer it is above every window and never animated, whatever the
+    // app is called. Keyboard input is exclusive while it is up (Escape, Enter, R).
+    m_useOverlayLayer = KWindowSystem::isPlatformWayland();
 
     this->setColor(Qt::transparent);
 
@@ -87,6 +98,25 @@ CaptureWindow::CaptureWindow(Mode mode, QScreen *screen, QQmlEngine *engine, QWi
     setMode(mode); // sets source and other stuff based on mode.
     if (auto rootItem = rootObject()) {
         rootItem->installEventFilter(selectionEditor);
+    }
+
+    if (m_useOverlayLayer) {
+        // LayerShellQt only takes a window with no native surface yet, so drop any
+        // that setting up the window created, as the recording overlay does.
+        if (handle()) {
+            destroy();
+        }
+        if (auto window = LayerShellQt::Window::get(this)) {
+            using namespace LayerShellQt;
+            window->setLayer(Window::LayerOverlay);
+            window->setAnchors(Window::Anchors::fromInt(Window::AnchorTop | Window::AnchorBottom | Window::AnchorLeft | Window::AnchorRight));
+            window->setExclusiveZone(-1);
+            window->setKeyboardInteractivity(Window::KeyboardInteractivityExclusive);
+            // KWin turns a layer surface's scope into its window type, and an unknown
+            // scope means a normal window, which its open animations act on.
+            window->setScope(u"on-screen-display"_s);
+            window->setScreen(m_screenToFollow);
+        }
     }
 }
 
@@ -128,6 +158,34 @@ void CaptureWindow::setMode(CaptureWindow::Mode mode)
                                      // the parent and window be null in Component.onCompleted
                                      {u"parent"_s, QVariant::fromValue(contentItem())}};
     setSource(QUrl("%1/Gui/CaptureOverlay.qml"_L1.arg(SPECTACLE_QML_PATH)), initialProperties);
+}
+
+void CaptureWindow::setInputRect(const QRectF &rect)
+{
+    // An empty mask would mean the whole window, so "nothing" is one pixel in
+    // the corner. On Wayland, Qt sends the mask as the surface's input region.
+    setMask(rect.isEmpty() ? QRegion(0, 0, 1, 1) : QRegion(rect.toAlignedRect()));
+}
+
+void CaptureWindow::setAllBelowDialogs(bool below)
+{
+    // A dialog opened from the overlay (Settings) is an ordinary window, which sits
+    // under the overlay layer; lower the overlays while it is open.
+    for (auto window : std::as_const(s_captureWindowInstances)) {
+        if (auto layer = LayerShellQt::Window::get(window)) {
+            layer->setLayer(below ? LayerShellQt::Window::LayerBottom : LayerShellQt::Window::LayerOverlay);
+            layer->setKeyboardInteractivity(below ? LayerShellQt::Window::KeyboardInteractivityNone
+                                                  : (SpectacleCore::instance()->videoPlatform()->isRecording() ? LayerShellQt::Window::KeyboardInteractivityNone
+                                                                                                              : LayerShellQt::Window::KeyboardInteractivityExclusive));
+        }
+    }
+}
+
+void CaptureWindow::clearInputRect()
+{
+    if (!mask().isEmpty()) {
+        setMask(QRegion());
+    }
 }
 
 bool CaptureWindow::accept()

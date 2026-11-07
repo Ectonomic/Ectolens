@@ -20,16 +20,19 @@ inline SpectacleCore *SpectacleDBusAdapter::parent() const
 
 void SpectacleDBusAdapter::FullScreen(int includeMousePointer)
 {
+    parent()->markNextCaptureAsApiCall();
     parent()->takeNewScreenshot(CaptureModeModel::AllScreens, 0, (includeMousePointer == -1) ? Settings::includePointer() : includeMousePointer, true);
 }
 
 void SpectacleDBusAdapter::CurrentScreen(int includeMousePointer)
 {
+    parent()->markNextCaptureAsApiCall();
     parent()->takeNewScreenshot(CaptureModeModel::CurrentScreen, 0, (includeMousePointer == -1) ? Settings::includePointer() : includeMousePointer, true);
 }
 
 void SpectacleDBusAdapter::ActiveWindow(int includeWindowDecorations, int includeMousePointer, int includeWindowShadow)
 {
+    parent()->markNextCaptureAsApiCall();
     parent()->takeNewScreenshot(CaptureModeModel::ActiveWindow,
                                 0,
                                 (includeMousePointer == -1) ? Settings::includePointer() : includeMousePointer,
@@ -39,6 +42,7 @@ void SpectacleDBusAdapter::ActiveWindow(int includeWindowDecorations, int includ
 
 void SpectacleDBusAdapter::WindowUnderCursor(int includeWindowDecorations, int includeMousePointer, int includeWindowShadow)
 {
+    parent()->markNextCaptureAsApiCall();
     parent()->takeNewScreenshot(CaptureModeModel::WindowUnderCursor,
                                 0,
                                 (includeMousePointer == -1) ? Settings::includePointer() : includeMousePointer,
@@ -48,6 +52,7 @@ void SpectacleDBusAdapter::WindowUnderCursor(int includeWindowDecorations, int i
 
 void SpectacleDBusAdapter::RectangularRegion(int includeMousePointer)
 {
+    parent()->markNextCaptureAsApiCall();
     parent()->takeNewScreenshot(CaptureModeModel::RectangularRegion,
                                 0,
                                 (includeMousePointer == -1) ? Settings::includePointer() : includeMousePointer,

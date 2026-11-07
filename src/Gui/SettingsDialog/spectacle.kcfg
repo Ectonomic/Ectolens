@@ -9,7 +9,7 @@
 <include>Platforms/VideoPlatform.h</include>
 <include>Gui/SettingsDialog/SettingsUtils.h</include>
 <include>KLocalizedString</include>
-<kcfgfile name="spectaclerc" />
+<kcfgfile name="ectolensrc" />
 <group name="General">
     <entry name="launchAction" type="Enum">
         <label>What to do when Spectacle is launched</label>
@@ -38,14 +38,64 @@
         <label>Close after extraction (skips auto-save)</label>
         <default>false</default>
     </entry>
-    <entry name="clipboardGroup" type="Enum">
-        <label>Clipboard action which should be executed after the screenshot is taken</label>
+    <!-- Ectolens: After Capture, the list behind Capture's arrow (design proposal 2).
+         Every row is a check, so they stack; a choice at the end of a row says how.
+         Save to file is autoSaveImage above. Copy only is the default. -->
+    <entry name="afterCaptureOpen" type="Bool">
+        <label>Open the capture in an app</label>
+        <default>false</default>
+    </entry>
+    <entry name="afterCaptureOpenApp" type="String">
+        <label>The app to open captures in; empty means the Ectolens window</label>
+        <default></default>
+    </entry>
+    <entry name="afterCaptureSaveWhere" type="Enum">
+        <label>Where Save to file puts a capture: the Screenshots folder, or ask each time</label>
         <choices>
-        <choice name="PostScreenshotDoNothing"></choice>
-        <choice name="PostScreenshotCopyImage"></choice>
-        <choice name="PostScreenshotCopyLocation"></choice>
+        <choice name="SaveToScreenshots"></choice>
+        <choice name="AskWhereEachTime"></choice>
         </choices>
-        <default>PostScreenshotDoNothing</default>
+        <default>SaveToScreenshots</default>
+    </entry>
+    <entry name="afterCaptureShowInFolder" type="Bool">
+        <label>Show the saved file in its folder</label>
+        <default>false</default>
+    </entry>
+    <entry name="afterCaptureCopy" type="Bool">
+        <label>Copy to the clipboard</label>
+        <default>true</default>
+    </entry>
+    <entry name="afterCaptureCopyWhat" type="Enum">
+        <label>What to copy: the image, or the saved file's path</label>
+        <choices>
+        <choice name="CopyTheImage"></choice>
+        <choice name="CopyTheFilePath"></choice>
+        </choices>
+        <default>CopyTheImage</default>
+    </entry>
+    <entry name="afterCaptureShare" type="Bool">
+        <label>Share the capture</label>
+        <default>false</default>
+    </entry>
+    <entry name="afterCaptureShareTarget" type="String">
+        <label>The share service to use; empty means ask each time</label>
+        <default></default>
+    </entry>
+    <entry name="resizeWindowToFit" type="Bool">
+        <label>Resize a window to the size picked in the frame label's menu</label>
+        <default>true</default>
+    </entry>
+    <entry name="agentAccess" type="Bool">
+        <label>Let AI agents ask for captures and recordings through Ectolens's MCP server; each one waits for the person to send it</label>
+        <default>false</default>
+    </entry>
+    <entry name="agentHidePrivateInfo" type="Bool">
+        <label>Blur private information (Hide Private Info) on every capture an agent asks for, before the person sends it</label>
+        <default>true</default>
+    </entry>
+    <entry name="revertSizeAfterward" type="Bool">
+        <label>Put a resized window back to its old size after the capture or recording</label>
+        <default>true</default>
     </entry>
     <entry name="useLightMaskColor" type="Bool">
         <label>Whether to use a light color mask in the region selection dialog</label>
@@ -103,6 +153,64 @@
         <label>Whether microphone audio is included in the recording</label>
         <default>false</default>
     </entry>
+    <entry name="videoSeparateAudioTracks" type="Bool">
+        <label>With system audio and the microphone both recorded, whether each also gets a track of its own, after a track that mixes them</label>
+        <default>false</default>
+    </entry>
+    <entry name="videoQuality" type="Enum">
+        <label>Recording quality: Small, High, Best or Custom</label>
+        <choices>
+            <choice name="Small"></choice>
+            <choice name="High"></choice>
+            <choice name="Best"></choice>
+            <choice name="Custom"></choice>
+        </choices>
+        <default>High</default>
+    </entry>
+    <entry name="videoEncoder" type="String">
+        <label>The FFmpeg encoder for recordings (libx264, libx265, libsvtav1, h264_nvenc, hevc_nvenc, av1_nvenc)</label>
+        <default>libx264</default>
+    </entry>
+    <entry name="videoFullRange" type="Bool">
+        <label>Record full color range (every shade) instead of the limited range most players expect</label>
+        <default>false</default>
+    </entry>
+    <entry name="videoFramerate" type="UInt">
+        <label>Recording frame rate, in frames per second</label>
+        <default>60</default>
+        <min>1</min>
+        <max>1000</max>
+    </entry>
+    <entry name="videoQualityLevel" type="Double">
+        <label>Custom quality level in the encoder's own scale (x264: crf); lower is sharper</label>
+        <default>16</default>
+        <min>0</min>
+        <max>63</max>
+    </entry>
+    <entry name="videoSpeedPreset" type="String">
+        <label>Custom encoder speed preset (x264: ultrafast to placebo)</label>
+        <default>veryfast</default>
+    </entry>
+    <entry name="videoKeyframeSeconds" type="Double">
+        <label>Custom seconds between keyframes</label>
+        <default>2</default>
+        <min>0.1</min>
+        <max>60</max>
+    </entry>
+    <entry name="videoBFrames" type="Int">
+        <label>Custom number of B-frames; -1 lets the speed preset decide</label>
+        <default>-1</default>
+        <min>-1</min>
+        <max>16</max>
+    </entry>
+    <entry name="videoFullColor" type="Bool">
+        <label>Custom: record full color detail (4:4:4)</label>
+        <default>false</default>
+    </entry>
+    <entry name="videoExtraOptions" type="String">
+        <label>Custom extra encoder options (x264: key=value:key=value)</label>
+        <default></default>
+    </entry>
     <entry name="includeDecorations" type="Bool">
         <label>Whether the window decorations are included in the screenshot</label>
         <default>true</default>
@@ -123,6 +231,36 @@
     <entry name="captureMode" type="Enum">
         <choices name="CaptureModeModel::CaptureMode"></choices>
         <default>CaptureModeModel::CaptureMode::AllScreens</default>
+    </entry>
+</group>
+<group name="Appearance">
+    <!-- Ectolens: Settings > Appearance (design proposal 2). -->
+    <entry name="look" type="Enum">
+        <label>The look of the overlay and the window</label>
+        <choices>
+        <choice name="EctoLook"></choice>
+        <choice name="KdeLook"></choice>
+        </choices>
+        <default>EctoLook</default>
+    </entry>
+    <entry name="accent" type="Enum">
+        <label>The color that marks where you are</label>
+        <choices>
+        <choice name="EctoGreenAccent"></choice>
+        <choice name="KdeAccent"></choice>
+        <choice name="CustomAccent"></choice>
+        </choices>
+        <default>EctoGreenAccent</default>
+    </entry>
+    <entry name="customAccentColor" type="Color">
+        <label>The accent color you picked</label>
+        <default>#38bdf8</default>
+    </entry>
+    <entry name="dimAmount" type="UInt">
+        <label>How dark the rest of the screen gets, in percent</label>
+        <default>40</default>
+        <min>0</min>
+        <max>80</max>
     </entry>
 </group>
 <group name="ImageSave">

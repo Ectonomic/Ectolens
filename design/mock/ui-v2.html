@@ -1,0 +1,864 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ectolens · the capture overlay, redrawn · design proposal 2</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;600;700&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+  /* ═══ THE DOCUMENT: the family's daylight (white page, hairlines, the design system's light tokens) ═══ */
+  :root {
+    --page: #ffffff; --well: #f4f4f5; --ink: #18181b; --ink-2: #52525b; --ink-3: #71717a; --hair: #e4e4e7; --hair-2: #d4d4d8;
+    --accent-text: #4d7c0f; --brand: #c8f22e; --brand-end: #9be012;
+    --doc-sans: "Geist", system-ui, sans-serif; --doc-display: "Schibsted Grotesk", "Geist", sans-serif; --doc-mono: "Geist Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-font-smoothing: antialiased; }
+  body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--doc-sans); font-size: 15px; line-height: 1.6; }
+  .wrap { max-width: 1140px; margin: 0 auto; padding: 0 40px; }
+  .cover { background: #0a0a0a; color: #fafafa; padding: 0 0 56px; }
+  .cover .rule { height: 4px; background: linear-gradient(90deg, var(--brand), var(--brand-end)); }
+  .cover .wrap { padding-top: 60px; }
+  .eyebrow { font: 500 11px/1.6 var(--doc-mono); letter-spacing: .18em; text-transform: uppercase; color: #8b8b94; margin: 0 0 20px; }
+  .cover h1 { font-family: var(--doc-display); font-size: 52px; font-weight: 700; letter-spacing: -.028em; line-height: 1.04; margin: 0 0 18px; max-width: 18ch; }
+  .cover .deck { font-size: 18px; line-height: 1.55; color: #a1a1aa; max-width: 66ch; margin: 0 0 30px; }
+  .cover .meta { display: flex; flex-wrap: wrap; gap: 8px 28px; font: 400 12px/1.5 var(--doc-mono); color: #8b8b94; border-top: 1px solid #27272a; padding-top: 16px; }
+  .cover .meta b { color: #fafafa; font-weight: 500; }
+  section { padding: 72px 0 0; }
+  section:last-of-type { padding-bottom: 96px; }
+  .sec-head { max-width: 70ch; margin: 0 0 26px; }
+  .kicker { font: 500 11px/1.6 var(--doc-mono); letter-spacing: .18em; text-transform: uppercase; color: var(--accent-text); display: block; margin-bottom: 12px; }
+  .sec-head h2 { font-family: var(--doc-display); font-size: 30px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; margin: 0 0 12px; }
+  .sec-head p { margin: 0 0 10px; color: var(--ink-2); font-size: 16px; max-width: 66ch; }
+  .label { display: flex; align-items: baseline; gap: 10px; font: 500 11px/1.6 var(--doc-mono); letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 10px; }
+  .label b { color: var(--ink); font-weight: 500; }
+  .artifact { border-radius: 10px; overflow: hidden; box-shadow: 0 0 0 1px var(--hair), 0 14px 36px -16px rgba(16,16,24,.35); }
+  .gap { height: 22px; }
+  .changes { margin: 24px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 34px; }
+  .changes li { display: grid; grid-template-columns: 24px 1fr; gap: 12px; font-size: 14px; color: var(--ink-2); line-height: 1.55; }
+  .changes li b { color: var(--ink); font-weight: 600; }
+  .changes .n, .badge { width: 24px; height: 24px; border-radius: 999px; background: var(--ink); color: #fff; font: 500 11px/24px var(--doc-mono); text-align: center; }
+  .numbers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 30px; }
+  .num { border: 1px solid var(--hair); border-radius: 12px; padding: 16px 20px 15px; }
+  .num .k { font: 500 10px/1.6 var(--doc-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 8px; }
+  .num .v { display: flex; align-items: baseline; gap: 10px; font-family: var(--doc-display); font-size: 30px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
+  .num .v small { font: 400 13px/1.4 var(--doc-sans); letter-spacing: 0; color: var(--ink-3); }
+  .num .v .was { color: var(--ink-3); font-weight: 600; }
+  .num p { margin: 8px 0 0; font-size: 13.5px; color: var(--ink-2); line-height: 1.5; }
+  .anat { position: relative; }
+  .badge { position: absolute; z-index: 3; box-shadow: 0 0 0 2px rgba(255,255,255,.9); }
+  .step { margin-bottom: 48px; }
+  .step-head { display: grid; grid-template-columns: 250px 1fr 300px; gap: 28px; margin-bottom: 16px; align-items: start; }
+  .step-head .n { font: 500 11px/1.6 var(--doc-mono); letter-spacing: .18em; color: var(--accent-text); display: block; margin-bottom: 6px; }
+  .step-head h3 { font-family: var(--doc-display); font-size: 20px; font-weight: 600; letter-spacing: -.01em; margin: 0; line-height: 1.25; }
+  .step-head p { margin: 0; font-size: 15px; color: var(--ink-2); }
+  .today { margin: 0; }
+  .today img { display: block; width: 300px; border-radius: 6px; box-shadow: 0 0 0 1px var(--hair); }
+  .today figcaption { font: 500 10px/1.6 var(--doc-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); margin-top: 6px; }
+  .today .words { width: 300px; border: 1px dashed var(--hair-2); border-radius: 6px; padding: 14px 16px; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); }
+  .minis { display: grid; grid-template-columns: 1fr 1fr; gap: 30px 20px; }
+  .minis figure { margin: 0; }
+  .minis figcaption { margin-top: 10px; font-size: 14px; color: var(--ink-2); line-height: 1.5; max-width: 58ch; }
+  .minis figcaption b { color: var(--ink); font-weight: 600; }
+  table.data { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid var(--hair); border-radius: 12px; overflow: hidden; }
+  table.data th, table.data td { text-align: left; padding: 10px 16px; border-bottom: 1px solid var(--hair); font-size: 14px; vertical-align: top; }
+  table.data th { font: 500 10px/1.6 var(--doc-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); background: #fafafa; }
+  table.data tr:last-child td { border-bottom: 0; }
+  .after-table { margin: 10px 0 0; font-size: 14px; color: var(--ink-2); max-width: 80ch; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .card { border: 1px solid var(--hair); border-radius: 12px; padding: 18px 20px; }
+  .card h4 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+  .card p { margin: 0; font-size: 14px; color: var(--ink-2); line-height: 1.55; }
+  ol.plan { margin: 0; padding-left: 22px; max-width: 80ch; }
+  ol.plan li { margin-bottom: 10px; color: var(--ink-2); }
+  ol.plan li b { color: var(--ink); }
+  code { font: 400 13px/1 var(--doc-mono); }
+  .refs { margin: 0; padding: 0; list-style: none; max-width: 84ch; }
+  .refs li { font-size: 14px; color: var(--ink-2); padding: 9px 0; border-bottom: 1px solid var(--hair); }
+  .refs li b { color: var(--ink); }
+  .refs a { color: var(--accent-text); }
+
+  /* the tokens section */
+  .tok { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .tok .card h4 { margin-bottom: 12px; }
+  .sw { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .sw div { font-size: 12.5px; color: var(--ink-2); line-height: 1.35; }
+  .sw i { display: block; height: 40px; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.14); margin-bottom: 6px; }
+  .sw b { display: block; color: var(--ink); font-weight: 500; }
+  .sw code { font-size: 11.5px; color: var(--ink-3); }
+  .specimen { margin-top: 16px; border-radius: 10px; padding: 18px 20px; background: #0a0a0a; display: flex; flex-wrap: wrap; align-items: center; gap: 14px 18px; }
+  .specimen .cap { width: 100%; font: 500 10px/1.6 var(--doc-mono); letter-spacing: .14em; text-transform: uppercase; color: #8b8b94; }
+  .typeset p { margin: 0 0 10px; color: var(--ink-2); font-size: 13.5px; }
+  .typeset .s1 { font: 500 13.5px/1.4 "Geist", sans-serif; color: var(--ink); }
+  .typeset .s2 { font: 400 12px/1.4 "Geist Mono", monospace; color: var(--ink-3); }
+
+  /* frames: the whole 1600x900 screen scaled down, a 1:1 crop, or a small thumbnail */
+  .overview { width: 1060px; height: 596px; position: relative; }
+  .overview > .screen, .overview > img { position: absolute; left: 0; top: 0; transform-origin: 0 0; transform: scale(.6625); }
+  .overview > img { width: 1600px; height: 900px; }
+  .detail { width: 1060px; height: 670px; position: relative; }
+  .detail > .screen { position: absolute; }
+  .detail.tall { height: 720px; }
+  .mini { width: 520px; height: 292.5px; position: relative; border-radius: 8px; }
+  .mini > .screen { position: absolute; left: 0; top: 0; transform-origin: 0 0; transform: scale(.325); }
+
+  /* ═══ THE APP: Ectolens in the design system's dark tokens (src/app/globals.css, components/ui/button.tsx, bits.tsx) ═══ */
+  .app { --bg: #0a0a0a; --bg-subtle: #111113; --bg-muted: #18181b; --bg-lift: #2a2a2e; --border: #27272a; --border-strong: #3f3f46;
+         --fg: #fafafa; --fg-muted: #a1a1aa; --fg-subtle: #8b8b94; --brand: #c8f22e; --brand-end: #9be012; --error: #f87171;
+         font: 400 13px/1.55 "Geist", sans-serif; color: var(--fg); }
+  .screen { position: relative; width: 1600px; height: 900px; overflow: hidden; background: #000 url(img/v2/today-scene.png) 0 0 / 1600px 900px no-repeat; }
+  .i { width: 16px; height: 16px; display: block; flex: none; }
+  .i22 { width: 18px; height: 18px; display: block; flex: none; }
+  /* the brand marks where you are: the window under the pointer, the frame, the current tool */
+  .spot { position: absolute; box-shadow: 0 0 0 4000px rgba(0,0,0,.4); outline: 2px solid var(--brand); outline-offset: -2px; }
+  .frame { position: absolute; box-shadow: 0 0 0 4000px rgba(0,0,0,.4); outline: 1px solid var(--brand); outline-offset: -1px; }
+  /* handles: one smooth shape per corner and edge, curving into the frame line */
+  .handles { position: absolute; left: -20px; top: -20px; overflow: visible; fill: var(--brand); pointer-events: none; }
+  .dashed { position: absolute; }
+  .dashed::after { content: ""; position: absolute; inset: -1px; border: 1px dashed var(--brand); }
+
+  /* a row: the family's menu surface (border, 8 px corners), lifted one step for a floating bar */
+  .ftb { position: absolute; display: inline-flex; align-items: center; gap: 2px; padding: 3px 8px; height: 36px;
+         background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 999px;
+         box-shadow: 0 10px 24px -6px rgba(0,0,0,.6), 0 2px 6px rgba(0,0,0,.35); white-space: nowrap; }
+  /* the family's button: medium weight, 6 px corners, 32 tall; ghost by default, the one main button is raised on the lift surface, marked by its key */
+  .tbtn { height: 28px; min-width: 28px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 11px; border-radius: 999px; font-weight: 500; font-size: 13px; color: var(--fg); }
+  .tbtn.io { padding: 0; width: 28px; position: relative; }
+  .tbtn.io img { opacity: .72; }
+  .tbtn.io.off img { opacity: .28; }
+  .tbtn.io.on { background: var(--bg-lift); }
+  .tbtn.io.on img { opacity: 1; }
+  .tbtn.io.on::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 2px; height: 2px; border-radius: 2px; background: var(--brand); }
+  .tbtn.primary { background: var(--bg-lift); box-shadow: inset 0 0 0 1px var(--border-strong); color: var(--fg); padding: 0 8px 0 12px; }
+  .tbtn.primary .key { font-size: 10.5px; font-weight: 500; line-height: 17px; padding: 0 5px; border-radius: 4px; background: var(--bg); color: var(--fg-muted); }
+  .tbtn .dd { width: 10px; height: 10px; opacity: .7; }
+  .tsep { width: 1px; height: 14px; margin: 0 7px; flex: none; background: linear-gradient(to bottom, transparent, var(--border-strong) 30%, var(--border-strong) 70%, transparent); } /* a faded hairline between groups */
+  .split { display: inline-flex; }
+  .split .arrow { width: 22px; min-width: 22px; padding: 0; margin-left: -6px; }
+  .split .arrow img { width: 10px; height: 10px; opacity: .7; }
+  .split .arrow.down { background: var(--bg-muted); }
+  .who { display: inline-flex; align-items: center; gap: 7px; padding: 0 8px 0 6px; height: 28px; border-radius: 999px; }
+  .who .name { font-weight: 600; font-size: 13px; letter-spacing: -.01em; }
+  .who .dim { font: 500 12.5px/1 "Geist Mono", monospace; color: var(--fg); } .who.info .dim { color: var(--fg); opacity: .28; font-weight: 400; }  /* the same gray as the faded undo and redo beside it */ /* the window's size: information, not a control */ /* the size is the label's only words now */
+  .hint { gap: 10px; padding: 3px 8px 3px 16px; color: var(--fg-muted); }
+  .kbd { display: inline-flex; align-items: center; height: 19px; padding: 0 6px; border-radius: 4px; background: var(--bg-lift); color: var(--fg-muted); font-size: 11px; font-weight: 500; }
+  .hint .say { color: var(--fg); }
+  .timer { height: 28px; display: inline-flex; align-items: center; gap: 8px; padding: 0 10px 0 10px; font: 500 13px/1 "Geist Mono", monospace; }
+  .timer .dot { width: 9px; height: 9px; border-radius: 999px; background: var(--error); box-shadow: 0 0 0 3px rgba(248,113,113,.22); }
+  .chipk { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 7px 0 5px; border-radius: 4px; background: var(--bg-lift); color: var(--fg-muted); font-size: 12px; font-weight: 500; }
+  .chipk img { width: 14px; height: 14px; opacity: .8; }
+  .cursor { position: absolute; pointer-events: none; }
+
+  /* the Record panel: the family's menu (bg, border, 8 px corners), with its segmented control and checkboxes */
+  .pop { position: absolute; width: 400px; background: var(--bg); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 16px 36px -8px rgba(0,0,0,.7); padding: 14px 14px 4px; }
+  .pop .row { display: grid; grid-template-columns: 82px 1fr; gap: 12px; align-items: center; margin-bottom: 12px; }
+  .pop .row.top { align-items: start; }
+  .pop .row > .k { color: var(--fg-subtle); font-size: 12.5px; text-align: right; }
+  .pop .row.top > .k { padding-top: 1px; }
+  .pop .note { grid-column: 2; color: var(--fg-subtle); font-size: 12px; margin-top: -6px; line-height: 1.45; }
+  .checks { display: grid; gap: 8px; }
+  .chk { display: inline-flex; align-items: center; gap: 9px; }
+  .chk .box { width: 15px; height: 15px; border-radius: 4px; border: 1px solid var(--border-strong); background: var(--bg); flex: none; position: relative; }
+  .chk.on .box { background: var(--brand); border-color: var(--brand); }
+  .chk.on .box::after { content: ""; position: absolute; left: 4.5px; top: 1.5px; width: 4px; height: 8px; border: solid #0a0a0a; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  .seg { display: inline-flex; justify-self: start; padding: 2px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-muted); }
+  .seg span { white-space: nowrap; height: 26px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--fg-muted); }
+  .seg span.on { background: var(--bg); color: var(--fg); box-shadow: 0 1px 2px rgba(0,0,0,.6); }
+  .pop .foot { border-top: 1px solid var(--border); margin: 2px -14px 0; padding: 4px; }
+  .pop .foot span { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border-radius: 6px; }
+  .pop .foot img { opacity: .72; }
+
+  .menu-art .mrow { display: flex; align-items: center; gap: 10px; padding: 4px 10px 8px; }
+  .menu-art .mrow .mk { color: var(--fg-muted); font-size: 13px; }
+  .menu-art .mrow .seg { margin-left: auto; } .pickx { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-muted); font-size: 12px; font-weight: 500; } .pickx.dim { opacity: .55; } .pickx { white-space: nowrap; } .pickx .dd { width: 10px; height: 10px; opacity: .7; } .menu-art .mrow { min-height: 36px; } .seg.dim { opacity: .4; } .seg span.locked { opacity: .35; } .menu-art .mrow.locked { opacity: .4; } .menu-art .mrow .chk { flex: none; } .menu-art .mrow.held .chk .box { opacity: .75; } .menu-art .mnote { padding: 0 10px 8px; font-size: 11.5px; color: var(--fg-subtle); line-height: 1.4; } .menu-art .mrow .mk { min-width: 58px; } .menu-art .mrow .seg span { padding: 0 10px; }
+  .menu-art .mi.held .chk .box { opacity: .8; }
+  .afterrow { display: grid; grid-template-columns: 372px 1fr; gap: 24px; align-items: center; margin-top: 18px; }
+  .afterrow .menu-art { width: 372px; }
+  .afterrow p { margin: 0; color: var(--ink-2); font-size: 14.5px; max-width: 60ch; }
+  .afterrow p b { color: var(--ink); }
+  .mainwin { margin-top: 30px; }
+  .mw-row { display: grid; grid-template-columns: 560px 1fr; gap: 26px; align-items: start; }
+  .mw-shot img { display: block; width: 560px; }
+  .mw-notes p { margin: 0 0 12px; font-size: 14.5px; color: var(--ink-2); line-height: 1.55; }
+  .mw-notes b { color: var(--ink); }
+  .mw-proposed { margin-top: 34px; }
+  .mw-stage { position: relative; width: 1060px; height: 700px; background: url(img/wallpaper-1600.jpg) center / cover; }
+  .mw { position: absolute; left: 30px; top: 30px; width: 1000px; border-radius: 8px; overflow: hidden; box-shadow: 0 24px 60px -10px rgba(0,0,0,.6), 0 0 0 1px rgba(0,0,0,.4); }
+  .mw-title { height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 10px; background: #1e2023; color: #fcfcfc; font: 400 13.333px/1 "Noto Sans", sans-serif; position: relative; }
+  .mw-title .t { position: absolute; left: 0; right: 0; text-align: center; pointer-events: none; }
+  .mw-title .ctl { margin-left: auto; display: inline-flex; gap: 14px; }
+  .mw-canvas { position: relative; height: 600px; background: var(--bg-subtle); display: flex; align-items: center; justify-content: center; }
+  .mw-dock { position: absolute; left: 0; right: 0; height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 10px; background: var(--bg); white-space: nowrap; }
+  .mw-dock.top { top: 0; border-bottom: 1px solid var(--border); } .mw-dock.bottom { bottom: 0; border-top: 1px solid var(--border); }
+  .mw-dock .grp { display: inline-flex; align-items: center; gap: 2px; } .mw-dock .grp.mid { position: absolute; left: 50%; transform: translateX(-50%); }
+  .mw-empty { display: flex; align-items: center; gap: 10px; color: var(--fg-subtle); font-size: 14px; } .mw-empty span:first-child { color: var(--fg-muted); }
+  .mw-why .tally { font: 400 13px/1.5 var(--doc-mono); color: var(--ink-3); }
+  .mw-img { width: 719px; height: 457px; background: url(img/v2/today-scene.png) -360px -176.4px / 1440px 810px no-repeat; box-shadow: 0 18px 44px -12px rgba(0,0,0,.7); border-radius: 2px; }
+  .mw-why { margin-top: 14px; max-width: 80ch; }
+  .ba { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .ba figure { margin: 0; } .ba figcaption { margin-top: 10px; font-size: 14px; color: var(--ink-2); line-height: 1.5; } .ba figcaption b { color: var(--ink); }
+  .ba.gaps { gap: 34px 20px; }
+  .mw-opts { position: absolute; top: 52px; left: 50%; transform: translateX(-50%); z-index: 1; } .mw-opts .ftb { position: static; }
+  .optk { color: var(--fg-subtle); font-size: 12.5px; padding: 0 4px 0 8px; } .tbtn.mono { font: 500 12.5px/1 "Geist Mono", monospace; }
+  .swatch { width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--border-strong); background: repeating-linear-gradient(45deg, transparent 0 3px, var(--border-strong) 3px 4px); }
+  .mw-opts .chk { padding: 0 10px 0 6px; font-size: 13px; }
+  .mw-msg { position: absolute; left: 0; right: 0; height: 38px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 14px; background: var(--bg); border-bottom: 1px solid var(--border); z-index: 1; font-size: 13px; color: var(--fg-muted); }
+  .mw-msg .mtext { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .mw-msg b { color: var(--fg); font-weight: 500; }
+  .mw-msg .mdot { width: 8px; height: 8px; border-radius: 99px; flex: none; } .mw-msg.done .mdot { background: #4ade80; } .mw-msg.progress .mdot { background: #60a5fa; } .mw-msg.error .mdot { background: var(--error); }
+  .mw-msg.error { background: rgba(248,113,113,.08); }
+  .tbtn.quiet { color: var(--fg-muted); font-size: 12.5px; padding: 0 8px; }
+  .mw-img.zoomed { background-size: 2160px 1215px; background-position: -650px -280px; }
+  .mw-img { position: relative; overflow: hidden; }
+  .mw-img .drawn { position: absolute; left: 380px; top: 150px; width: 230px; height: 120px; border: 4px solid #f87171; border-radius: 2px; box-shadow: 0 3px 8px rgba(0,0,0,.5); }
+  .mw-img.video::after { content: ""; position: absolute; inset: 0; background: rgba(0,0,0,.25); }
+  .playbig { position: absolute; left: 50%; top: 50%; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 99px; background: rgba(10,10,10,.75); display: flex; align-items: center; justify-content: center; z-index: 1; }
+  .playbig img { width: 26px; height: 26px; }
+  .scrub { width: 120px; height: 4px; border-radius: 2px; background: var(--border-strong); margin: 0 8px; position: relative; } .scrub i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: var(--fg); }
+  .time { font: 500 12px/1 "Geist Mono", monospace; color: var(--fg-muted); padding-right: 6px; }
+  .mw.real.narrow { width: 520px; left: 144px; } .mw.narrow .mw-canvas { height: 568px; }
+  .mw.narrow .mw-img { width: 480px; height: 305px; background-size: 960px 540px; background-position: -240px -117.6px; }
+  .mw.narrow .mw-dock .tbtn > span:not(.swatch) { display: none; } .mw.narrow .mw-dock .tbtn.quiet { display: none; }
+  .mw.lightapp { --bg: #ffffff; --bg-subtle: #fafafa; --bg-muted: #f4f4f5; --bg-lift: #f4f4f5; --border: #e4e4e7; --border-strong: #d4d4d8; --fg: #18181b; --fg-muted: #52525b; --fg-subtle: #71717a; --error: #b91c1c; }
+  .mw.lightapp .mw-title { background: #e3e5e7; color: #232629; } .mw.lightapp .mw-title svg path { stroke: #232629; }
+  .mw.lightapp .mw-dock img, .mw.lightapp .mw-menu img { filter: invert(1) brightness(.35); }
+  .mw.lightapp .mw-img { box-shadow: 0 10px 30px -10px rgba(0,0,0,.35), 0 0 0 1px var(--border); }
+  .ba-frame { width: 520px; height: 395px; position: relative; background: #0a0a0a; }
+  .ba-frame > img { display: block; width: 520px; height: 395px; }
+  .ba-scale { position: absolute; left: 0; top: 0; width: 808px; height: 612px; transform: scale(.6436); transform-origin: 0 0; }
+  .mw.real { left: 7px; top: 6px; width: 793px; } .mw.real .mw-canvas { height: 568px; }
+  .mw-menu { position: absolute; width: 280px; z-index: 2; box-shadow: 0 16px 36px -8px rgba(0,0,0,.7); border-radius: 12px; }
+  .mw-menu .mi.hot { background: var(--bg-muted); }
+  .mw-why p { margin: 0 0 10px; font-size: 14.5px; color: var(--ink-2); line-height: 1.55; }
+  .mw-why b { color: var(--ink); }
+  /* the Options menu in the family's menu drawing */
+  .optrow { display: grid; grid-template-columns: 340px 1fr; gap: 32px; align-items: start; }
+  .menu-art { width: 340px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 4px; box-shadow: 0 14px 36px -16px rgba(16,16,24,.5); }
+  .menu-art .mh { padding: 8px 10px 4px; font-size: 11.5px; font-weight: 500; color: var(--fg-subtle); }
+  .menu-art .mi { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border-radius: 6px; font-size: 13px; }
+  .menu-art .mi:first-of-type { background: var(--bg-muted); }
+  .menu-art .mi img { opacity: .72; }
+  .menu-art .mk { color: var(--fg-muted); }
+  .menu-art .spin { margin-left: auto; height: 26px; display: inline-flex; align-items: center; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; color: var(--fg); }
+  .menu-art .ms { height: 1px; background: var(--border); margin: 4px 0; }
+  .optnotes { margin: 0; padding: 0; list-style: none; }
+  .optnotes li { font-size: 14px; color: var(--ink-2); padding: 0 0 12px; line-height: 1.55; }
+  .optnotes li b { color: var(--ink); font-weight: 600; }
+  /* Plasma's own notification, in your Breeze Dark (Plasma draws it; Ectolens gives the words and the picture) */
+  .note-plasma { position: absolute; right: 16px; bottom: 16px; width: 360px; padding: 12px 14px 14px; background: #202326; border: 1px solid rgba(252,252,252,.12); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.45); font: 400 13.333px/1.4 "Noto Sans", sans-serif; color: #fcfcfc; }
+  .note-plasma .head { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #a1a9b1; margin-bottom: 8px; }
+  .note-plasma .head .sp { flex: 1; }
+  .note-plasma .t { font-weight: 700; margin-bottom: 2px; }
+  .note-plasma .b { color: #dfe2e5; margin-bottom: 10px; }
+  .note-plasma .thumb { height: 208px; border-radius: 4px; background: url(img/v2/today-scene.png) -164.2px -80.5px / 656.8px 369.5px no-repeat; box-shadow: 0 0 0 1px rgba(252,252,252,.1); margin-bottom: 10px; }
+  .note-plasma .acts { display: flex; gap: 6px; }
+  .note-plasma .acts span { height: 30px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 3px; background: #292c30; border: 1px solid rgba(252,252,252,.16); }
+  /* round three */
+  .rowwrap { position: absolute; display: flex; gap: 8px; }
+  .rowwrap > .ftb { position: static; }
+  .who.menu { padding: 0 6px 0 4px; }
+  .who.menu .dd { width: 10px; height: 10px; opacity: .7; margin-left: 2px; }
+  .menu-art .mi .sc { margin-left: auto; color: var(--fg-subtle); font-size: 12px; }
+  .menu-art .mi .sub { margin-left: auto; opacity: .6; transform: rotate(-90deg); width: 10px; height: 10px; }
+  .menu-art .mi.dis { color: var(--fg-subtle); opacity: .55; }
+  .menu-art .mi .why { margin-left: auto; font-size: 11.5px; color: var(--fg-subtle); }
+  .menu-art .mi .tick { width: 14px; flex: none; color: var(--brand); font-weight: 600; }
+  .menu-art .mi .note2 { color: var(--fg-subtle); font-size: 12px; margin-left: 8px; }
+  .menu-art .mi:first-of-type { background: none; }
+  .menu-art .mi.hot { background: var(--bg-muted); }
+  .menu-art .fields { display: flex; align-items: center; gap: 8px; padding: 6px 10px 8px; color: var(--fg-subtle); }
+  .menu-art .fields .in { width: 74px; height: 30px; display: inline-flex; align-items: center; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; color: var(--fg); font: 400 13px/1 "Geist Mono", monospace; background: var(--bg); }
+  .menu-art .fields .in.focus { border-color: var(--brand); }
+  .menu-art .fields img { opacity: .72; margin-left: 2px; }
+  .menu-art.pos { position: absolute; width: 372px; border-radius: 14px; box-shadow: 0 16px 36px -8px rgba(0,0,0,.7); }
+  .sizerow { display: grid; grid-template-columns: 300px 1fr; gap: 24px; align-items: start; }
+  .sizerow .menu-art { width: 300px; }
+  .schem { --k: .2; background: #0a0a0a; border-radius: 10px; padding: 16px 16px 14px; color: #a1a1aa; }
+  .schem .cap { font: 500 10px/1.6 "Geist Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: #8b8b94; margin-bottom: 10px; }
+  .schem .desk { position: relative; width: calc(3440px*var(--k)); height: calc(1440px*var(--k)); border: 1px solid #3f3f46; border-radius: 4px; background: #111113; }
+  .schem .was { position: absolute; border: 1px dashed #8b8b94; }
+  .schem .was span { position: absolute; left: 6px; top: 4px; font-size: 11px; color: #8b8b94; }
+  .schem .now { position: absolute; outline: 1px solid var(--brand); background: rgba(200,242,46,.05); }
+  .schem .now .pill { position: absolute; left: 0; top: -30px; display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px 0 6px; border-radius: 6px; background: #111113; border: 1px solid #27272a; color: #fafafa; font-size: 12px; }
+  .schem .now .pill i { font: 400 11px/1 "Geist Mono", monospace; color: #8b8b94; font-style: normal; }
+  .schem .now .pill img { width: 14px; height: 14px; }
+  .schem p { margin: 12px 0 0; font-size: 13.5px; line-height: 1.5; color: #a1a1aa; max-width: 70ch; }
+  .cards.one { grid-template-columns: 1fr; }
+  /* Settings > Appearance in Breeze Dark */
+  .appear { display: grid; grid-template-columns: 190px 1fr; background: #202326; border-radius: 10px; overflow: hidden; box-shadow: 0 0 0 1px var(--hair), 0 14px 36px -16px rgba(16,16,24,.35); font: 400 13.333px/1.4 "Noto Sans", sans-serif; color: #fcfcfc; }
+  .appear .side { background: #1b1e20; padding: 10px 8px; border-right: 1px solid rgba(252,252,252,.1); }
+  .appear .side div { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: 4px; }
+  .appear .side div.on { background: rgba(255,69,0,.22); box-shadow: inset 0 0 0 1px rgba(255,69,0,.6); }
+  .appear .side img { width: 22px; height: 22px; }
+  .appear .page { padding: 18px 24px 20px; }
+  .appear .page h5 { margin: 0 0 14px; font-size: 15px; font-weight: 600; }
+  .appear .f { display: grid; grid-template-columns: 120px 1fr; gap: 14px; align-items: start; margin-bottom: 16px; }
+  .appear .f > .k { text-align: right; color: #fcfcfc; padding-top: 4px; }
+  .appear .f .hint2 { color: #a1a9b1; font-size: 12.5px; margin-top: 6px; }
+  .appear .radios { display: flex; flex-direction: column; gap: 8px; }
+  .appear .r { display: flex; align-items: center; gap: 9px; }
+  .appear .r .dot { width: 16px; height: 16px; border-radius: 999px; border: 1px solid rgba(252,252,252,.35); background: #141618; position: relative; flex: none; }
+  .appear .r.on .dot { border-color: #FF4500; }
+  .appear .r.on .dot::after { content: ""; position: absolute; inset: 3px; border-radius: 999px; background: #FF4500; }
+  .appear .r .chip { width: 18px; height: 18px; border-radius: 4px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.2); }
+  .appear .r .pick { height: 26px; display: inline-flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 3px; background: #292c30; border: 1px solid rgba(252,252,252,.16); font-size: 12.5px; }
+  .appear .slider { position: relative; width: 260px; height: 22px; }
+  .appear .slider::before { content: ""; position: absolute; left: 0; right: 0; top: 10px; height: 3px; border-radius: 2px; background: #3a3e42; }
+  .appear .slider .fill { position: absolute; left: 0; top: 10px; height: 3px; border-radius: 2px; background: #FF4500; }
+  .appear .slider .knob { position: absolute; top: 3px; width: 16px; height: 16px; border-radius: 999px; background: #e3e5e7; border: 1px solid #FF4500; }
+  .appear .ends { display: flex; justify-content: space-between; width: 260px; color: #a1a9b1; font-size: 12px; }
+  .appear .preview { border-radius: 6px; overflow: hidden; width: 520px; height: 120px; position: relative; box-shadow: 0 0 0 1px rgba(252,252,252,.12); }
+  .appear .preview .screen { position: absolute; left: -390px; top: -125px; transform: scale(.75); transform-origin: 390px 125px; }
+  .accents { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .accents figure { margin: 0; }
+  .accents .strip { height: 132px; border-radius: 10px; overflow: hidden; position: relative; }
+  .accents .strip .screen { position: absolute; left: -390px; top: -125px; transform: scale(.62); transform-origin: 390px 125px; }
+  .accents figcaption { margin-top: 8px; font-size: 14px; color: var(--ink-2); }
+  .accents figcaption b { color: var(--ink); }
+  .ideas { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .idea { border: 1px solid var(--hair); border-radius: 12px; padding: 16px 18px; }
+  .idea .btnrow { background: #111113; border-radius: 8px; padding: 6px; display: inline-flex; gap: 4px; margin-bottom: 12px; }
+  .idea h4 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+  .idea h4 small { font: 500 10px/1 var(--doc-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--accent-text); margin-left: 8px; }
+  .idea p { margin: 0; font-size: 14px; color: var(--ink-2); line-height: 1.55; }
+</style>
+</head>
+<body>
+<script src="app-match.js"></script>
+
+<header class="cover">
+  <div class="rule"></div>
+  <div class="wrap">
+    <p class="eyebrow">Ectolens · Design proposal 2, round three · the capture overlay · November 1, 2026</p>
+    <h1>Everything about the frame, at the frame.</h1>
+    <p class="deck">Today Print Screen scatters its controls around your screen and ends in a second window. This proposal gathers them at the frame: Capture and Record side by side, a frame label that can set the exact size, one press of Enter to finish, and the Ecto family's look with an accent you choose.</p>
+    <div class="meta">
+      <span><b>Today</b> real captures of Ectolens as installed, in an off-screen KWin with your theme and KDE's Waterfall wallpaper</span>
+      <span><b>Proposed</b> drawn over the same scene, at the same coordinates</span>
+      <span><b>Tokens</b> the design system's dark set, read from its source</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<section id="changes">
+  <div class="sec-head">
+    <span class="kicker">01 · What changes</span>
+    <h2>Capture and Record side by side, everything else at the frame</h2>
+    <p>The same moment twice: Konsole has just been taken by clicking it. Above, Ectolens as installed now. Below, the proposal.</p>
+  </div>
+  <p class="label"><b>Today</b> a real capture</p>
+  <div class="app"><div class="overview artifact win"><img src="img/v2/today-framed.png" alt="Today: tools above the frame, a long bar under it, Options alone at the bottom"></div></div>
+  <div class="gap"></div>
+  <p class="label"><b>Proposed</b></p>
+  <div class="app"><div class="overview artifact win"><div class="screen" data-scene="framed"></div></div></div>
+  <ol class="changes">
+    <li><span class="n">1</span><span><b>Capture and Record, side by side.</b> The two results of one frame sit together at the start of the row, each with an arrow for its choices. Capture's arrow lists what happens after a capture (copy, save, open with an app, share, print, show in folder), which takes in everything Export did, so Export goes away.</span></li>
+    <li><span class="n">2</span><span><b>Enter finishes the job.</b> It captures: the picture goes to your clipboard, the overlay closes, and KDE's notification shows what you took, with Save if you want the file too. Today, with your settings, Enter opens a second window and you copy or save from there.</span></li>
+    <li><span class="n">3</span><span><b>The frame label sets the size.</b> It starts the tools row above the frame, so what you took sits right over it. Click it and choose a size: pick 1920×1080 on a window and the window resizes to it, then goes back afterward.</span></li>
+    <li><span class="n">4</span><span><b>Room for new tools.</b> After Capture and Record, the row holds tools that work on the picture, starting with Extract Text. Section 05 has ideas for more.</span></li>
+  </ol>
+  <div class="numbers">
+    <div class="num"><div class="k">Presses to a copied picture</div><div class="v"><span class="was">4</span><small>today</small> 3 <small>proposed</small></div><p>Today: Print Screen, click, Copy, then close the window that opens. Proposed: Print Screen, click, Enter.</p></div>
+    <div class="num"><div class="k">Controls before you choose</div><div class="v"><span class="was">24</span><small>today</small> 1 <small>proposed</small></div><p>Counted in the captures: 14 tools and 10 buttons today; the Options gear on the hint line proposed.</p></div>
+    <div class="num"><div class="k">Buttons under the frame</div><div class="v"><span class="was">10</span><small>today</small> 8 <small>proposed</small></div><p>Today: 9 under the frame and Options at the bottom. Accept, Save, Copy and Export fold into Capture and its arrow; Options becomes a gear at the end of the row, and Cancel moves into its menu.</p></div>
+  </div>
+</section>
+
+<section id="anatomy">
+  <div class="sec-head">
+    <span class="kicker">02 · Anatomy</span>
+    <h2>Above the frame, what it is and how to mark it. Below it, what to make of it.</h2>
+    <p>At full size, in the design system's tokens, with KDE's own icons.</p>
+  </div>
+  <div class="anat app" id="anat"><div class="detail tall artifact win"><div class="screen" data-scene="framed" data-crop="270,90"></div></div></div>
+  <ol class="changes" style="margin-top:26px">
+    <li><span class="n">1</span><span><b>Frame label,</b> at the start of the tools row: the window's icon and the size, a screen icon for a whole screen, only the size for an area you drew. The name is left off; the icon already says which app it is. Its arrow opens the size menu (step 3).</span></li>
+    <li><span class="n">2</span><span><b>Marking tools,</b> in Spectacle's order with a gap between kinds: undo and redo, crop and select, lines, shapes, hiding, then text and numbers. The tool in use carries the accent line; undo and redo stay faint until there is something to undo.</span></li>
+    <li><span class="n">3</span><span><b>The frame,</b> drawn in the accent. Its handles are Spectacle's three-quarter and half circles, curving smoothly into the line instead of stopping in a notch. Dimming works as today.</span></li>
+    <li><span class="n">4</span><span><b>Capture and Record,</b> the two results, together. Each arrow opens its choices: Capture's menu (step 4) and Record's panel (step 5).</span></li>
+    <li><span class="n">5</span><span><b>Picture tools:</b> Extract Text, with its arrow for the language, which used to sit in Export. This is where new tools go.</span></li>
+    <li><span class="n">6</span><span><b>Options,</b> the gear that ends the bottom row. It opens today's Options menu with Close at the bottom, so cancelling lives there now, and Esc still cancels.</span></li>
+  </ol>
+</section>
+
+<section id="moments">
+  <div class="sec-head">
+    <span class="kicker">03 · Step by step</span>
+    <h2>From Print Screen to done, to a set size, and to a recording</h2>
+    <p>Each step at full size, with today's real capture beside it where there is one.</p>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><div><span class="n">1</span><h3>Point</h3></div>
+      <p>The window under the pointer stays bright, the rest dims, and its label sits above it, where the tools will appear, so you know what a click will take before you click. One line at the top says how to choose, and nothing covers the middle of your work. No tools yet: there is nothing to act on.</p>
+      <figure class="today"><img class="app-match" src="img/v2/today-pointing.png" alt=""><figcaption>Today</figcaption></figure></div>
+    <div class="app"><div class="detail artifact win"><div class="screen" data-scene="pointing" data-crop="270,0"></div></div></div>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><div><span class="n">2</span><h3>Enter, and you're done</h3></div>
+      <p>Enter is Capture. The picture is on your clipboard and the overlay is gone. KDE's notification shows what you took, titled with the app and size, with Save for when you want the file and Annotate for when you want more.</p>
+      <figure class="today"><div class="words">With your settings, Enter opens the Ectolens window with the picture. You copy or save from there, then close it.</div><figcaption>Today</figcaption></figure></div>
+    <div class="app"><div class="detail artifact win"><div class="screen" data-scene="done" data-crop="540,230"></div></div></div>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><div><span class="n">3</span><h3>Set the size</h3></div>
+      <p>Click the frame label. Type a size or pick one. On a window, the window itself resizes so the capture is exactly that size, and it goes back when you're done. On an area you drew, the frame takes the size. Sizes that don't fit the screen are listed but can't be picked, with the reason.</p>
+      <figure class="today"><div class="words">Not possible today. The frame can only be dragged, and a window can't be resized from the overlay.</div><figcaption>Today</figcaption></figure></div>
+    <div class="sizerow app">
+      <div class="menu-art win" data-sizemenu></div>
+      <div class="schem win">
+        <div class="cap">Your 3440×1440 screen, drawn to scale</div>
+        <div class="desk">
+          <div class="was" style="left:calc(760px*var(--k));top:calc(180px*var(--k));width:calc(799px*var(--k));height:calc(508px*var(--k))"><span>Before: 799×508</span></div>
+          <div class="now" style="left:calc(760px*var(--k));top:calc(180px*var(--k));width:calc(1920px*var(--k));height:calc(1080px*var(--k))"><span class="pill"><img src="icons/utilities-terminal.svg" alt=""><i>1920×1080</i></span></div>
+        </div>
+        <p>Konsole grows from its top-left corner to 1920×1080, the frame follows it, and the picture is taken fresh at the new size. A recording made now is exactly 1920×1080.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><div><span class="n">4</span><h3>Capture's menu</h3></div>
+      <p>Capture's arrow is one list of what happens after a capture. Every row is a check, so they stack, and a choice at the end of the row says how. Open with, at the top, opens it in an app: Ectolens's own window first (what Accept opens today), then your image apps. Save to file puts it in Screenshots, or asks where each time. Copy to clipboard puts the image, or once there is a saved file, its path, on the clipboard. Share sends it on through KDE's share services. Show in folder opens the folder with the file picked out. An unchecked row dims its choice. Ctrl+Shift+S still opens Save As for a single capture.</p>
+      <figure class="today"><img class="app-match" src="img/v2/today-framed.png" alt=""><figcaption>Today: Accept, Save, Save As, Copy, Export</figcaption></figure></div>
+    <div class="app"><div class="detail artifact win"><div class="screen" data-scene="capmenu" data-crop="270,122"></div></div></div>
+    <div class="afterrow">
+      <div class="app"><div class="menu-art win" data-after="path"></div></div>
+      <p><b>File Path is locked until Save to file is checked,</b> because a path needs a saved file to point to. That's why Save to file sits above Copy to clipboard, with Show in folder right under it: both need the saved file, so both stay locked until it's checked. Uncheck Save to file while File Path is chosen and Copy goes back to Image. If Save is set to ask where and you cancel that dialog, there is no file, so Ectolens copies the image instead and the notification says it wasn't saved.</p>
+    </div>
+    <div class="mainwin">
+      <p class="label"><b>The Ectolens window</b> today, a real capture: Print Screen, Konsole clicked, Enter</p>
+      <div class="mw-row">
+        <div class="artifact win mw-shot"><img src="img/v2/today-window.png" alt="The Ectolens window with the Konsole capture"></div>
+        <div class="mw-notes">
+          <p>This is what <b>Open with › Ectolens</b> opens: the capture large, in Ectolens's own window. Today it is also what Accept opens after Print Screen with your settings (checked off-screen with real key presses), and what you see when you start Ectolens from the app launcher.</p>
+          <p>Its toolbar, left to right: Save, Save As, Copy, Extract Text, <b>Export</b> (Open Default Screenshots Folder, <b>Print</b>, Open With, Share, Extract Text by Language), Edit for marking up, New Screenshot, New Recording and Options.</p>
+          <p><b>Print lives here,</b> so it leaves the After Capture list. Simplified below the same way as the overlay.</p>
+        </div>
+      </div>
+    </div>
+    <div class="mw-proposed">
+      <p class="label"><b>Before and after</b> the Ectolens window at the same size, holding the same capture</p>
+      <div class="ba">
+        <figure><div class="ba-frame artifact win"><img src="img/v2/today-window.png" alt="Today's Ectolens window"></div><figcaption><b>Before</b> today, a real capture: a strip of 10 controls across the top and the picture under it</figcaption></figure>
+        <figure><div class="ba-frame artifact win"><div class="ba-scale" data-mainwin="view" data-size="real"></div></div><figcaption><b>After</b> proposed: the overlay's parts docked to the window's edges, with Copy, Save, Extract Text and New Capture below and the gear above</figcaption></figure>
+      </div>
+      <div class="gap"></div>
+      <p class="label"><b>The Ectolens window, simplified</b> with a capture, Save's arrow open, rows anchored to the sides</p>
+      <div class="mw-stage artifact win" data-mainwin="view" data-menu="save"></div>
+      <div class="mw-why">
+        <p><b>The same two rows as the overlay, docked to the window's edges.</b> A window has sides, so its rows hold to them: each row's groups anchor to the left and right edges, and the picture sits between. The parts are the overlay's, so everything you learned there works here.</p>
+        <p><b>Above:</b> the picture's size at the left, in gray because it is information, not a control, the marking tools in the middle, always out, so there is no Edit or Mark Up mode, and the gear at the right.</p>
+        <p><b>Below:</b> at the left, what to do with this picture: Copy (its arrow picks Image or File Path), Save (its arrow holds Save As and Show in Folder, then Open With, Share and Print) and Extract Text. At the right, New Capture. New Capture opens the overlay, which already offers Capture and Record side by side, so one button replaces New Screenshot and New Recording; its arrow picks full screen, a window or a delay.</p>
+        <p><b>The status line is gone:</b> the title bar already says Unsaved, and once saved it shows the file's name.</p>
+        <p class="tally">Today's toolbar: 10 controls in a strip. Simplified: 4 in the bottom row; the label, the overlay's tools and the gear above.</p>
+      </div>
+      <div class="gap"></div>
+      <p class="label"><b>The Ectolens window, simplified</b> opened from the launcher, nothing captured yet, New Capture's arrow open</p>
+      <div class="mw-stage artifact win" data-mainwin="empty" data-menu="new"></div>
+      <div class="mw-why"><p><b>Nothing to act on, so one thing to do:</b> New Capture, in its place at the bottom right, and the gear at the top right. The label, the tools and the picture actions arrive with a capture.</p>
+        <p><b>The capture interface's own items leave the window.</b> The frame label's size menu sizes a window before it is captured, so here the label is only the picture's size, without the app's icon. The capture options that sat in the Options menu (mouse pointer, titlebar and borders, shadow, delay) shape the next capture, so they move into New Capture's arrow, beside the kinds of capture. The gear holds Settings, with Help and About below it (gap 7).</p></div>
+      <div class="gap"></div>
+      <p class="label"><b>The Ectolens window, every state</b> each at the window's real size</p>
+      <div class="ba gaps">
+        <figure><div class="ba-frame artifact win"><div class="ba-scale" data-size="real" data-mainwin="view" data-tool="rect"></div></div><figcaption><b>1. A tool in use</b> The rectangle is picked, so its settings appear in a second row right under the tools: Spectacle's own Stroke (color and width), Fill and Shadow. The text tool shows Font, the number tool Number, blur and pixelate Strength. Pick no tool and the row goes. The overlay gets the same row under its tools.</figcaption></figure>
+        <figure><div class="ba-frame artifact win"><div class="ba-scale" data-size="real" data-mainwin="view" data-tool="crop"></div></div><figcaption><b>2. Cropping</b> The crop frame uses the overlay's frame and handles. Its row says the size it will crop to, with Cancel (Esc) and Apply (Enter).</figcaption></figure>
+        <figure><div class="ba-frame artifact win"><div class="ba-scale" data-size="real" data-mainwin="view" data-menu="zoom" data-zoom="150%"></div></div><figcaption><b>3. Zoom</b> A quiet zoom button at the bottom right, beside New Capture: Fit by default, then Actual Size, 150%, 200%, and the keys. Ctrl and the scroll wheel zoom where the pointer is.</figcaption></figure>
+        <figure><div class="ba-frame artifact win"><div class="ba-scale" data-size="real" data-mainwin="view" data-msg="saved,qr"></div></div><figcaption><b>4. Messages</b> Each message is a slim strip under the top row with its one action: Saved (Show in Folder), a QR code found (Open), text extracted (Show Text), and errors in red (an error stays until closed). A newer message of the same kind replaces the older one, as in Spectacle today. Once saved, the title shows the file's name.</figcaption></figure>
+        <figure><div class="ba-frame artifact win"><div class="ba-scale" data-size="real" data-mainwin="video"></div></div><figcaption><b>5. After a recording</b> The window plays the video: play, a scrubber and the time on the left, then Copy and Save. The size row shows the size and length, and the marking tools and Extract Text leave, because they work on pictures.</figcaption></figure>
+        <figure><div class="ba-frame artifact win"><div class="ba-scale" data-size="real" data-mainwin="view" data-narrow></div></div><figcaption><b>6. A narrow window</b> When the rows don't fit, the button words give way to their icons (each keeps its tooltip), and the size label goes first. The tools stay in one row.</figcaption></figure>
+        <figure><div class="ba-frame artifact win"><div class="ba-scale" data-size="real" data-mainwin="view" data-menu="gear"></div></div><figcaption><b>7. Help and About</b> The gear opens a short menu: Settings first, Keyboard Shortcuts, then Ectolens Help (F1), Report a Bug and About Ectolens, which sat in today's Options menu.</figcaption></figure>
+        <figure><div class="ba-frame artifact win"><div class="ba-scale" data-size="real" data-mainwin="view" data-light></div></div><figcaption><b>8. Light</b> In a light Plasma theme the window uses the design system's light tokens: a white page, hairline borders, dark words and icons. The accent marks the same things.</figcaption></figure>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><div><span class="n">5</span><h3>Or choose what goes into a video</h3></div>
+      <p>Record's arrow opens a panel in place of a menu with three submenus. Every choice is in view and takes one press, and your choices stay for next time.</p>
+      <figure class="today"><img class="app-match" src="img/v2/today-menu.png" alt=""><figcaption>Today</figcaption></figure></div>
+    <div class="app"><div class="detail artifact win"><div class="screen" data-scene="popover" data-crop="270,122"></div></div></div>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><div><span class="n">6</span><h3>Record</h3></div>
+      <p>The frozen picture fades into the live screen and the frame becomes a dashed outline in the accent. The row keeps its place and holds the time, a Mic marker while the microphone is on, Pause and Stop, with Stop where Record was. Print Screen also stops it, as it does today.</p>
+      <figure class="today"><img class="app-match" src="img/v2/today-recording.png" alt=""><figcaption>Today</figcaption></figure></div>
+    <div class="app"><div class="detail artifact win"><div class="screen" data-scene="recording" data-crop="270,122"></div></div></div>
+  </div>
+</section>
+
+<section id="tokens">
+  <div class="sec-head">
+    <span class="kicker">04 · Look and accent</span>
+    <h2>The Ecto look, with your accent</h2>
+    <p>Every value is read from the design system's source: <code>src/app/globals.css</code> for color and corners, <code>components/ui/button.tsx</code> for buttons, <code>bits.tsx</code> for the segmented control and chips. The accent is yours to choose in Settings › Appearance: it colors where you are (the frame, the window under the pointer, the tool in use, checked boxes) and never fills a button.</p>
+  </div>
+  <div class="tok">
+    <div class="card"><h4>Surfaces and lines</h4>
+      <div class="sw app-match">
+        <div><i style="background:#0a0a0a"></i><b>Panel</b><code>bg #0a0a0a</code></div>
+        <div><i style="background:#111113"></i><b>Rows</b><code>bg-subtle #111113</code></div>
+        <div><i style="background:#18181b"></i><b>Hover, tracks</b><code>bg-muted #18181b</code></div>
+        <div><i style="background:#2a2a2e"></i><b>Tool in use, keys</b><code>bg-lift #2a2a2e</code></div>
+        <div><i style="background:#27272a"></i><b>Borders</b><code>border #27272a</code></div>
+        <div><i style="background:#3f3f46"></i><b>Separators</b><code>border-strong #3f3f46</code></div>
+      </div></div>
+    <div class="card"><h4>Text and signals</h4>
+      <div class="sw app-match">
+        <div><i style="background:#fafafa"></i><b>Words</b><code>fg #fafafa</code></div>
+        <div><i style="background:#a1a1aa"></i><b>Hints</b><code>fg-muted #a1a1aa</code></div>
+        <div><i style="background:#8b8b94"></i><b>Sizes, labels</b><code>fg-subtle #8b8b94</code></div>
+        <div><i style="background:linear-gradient(135deg,#c8f22e,#9be012)"></i><b>Accent, by default</b><code>brand #c8f22e</code></div>
+        <div><i style="background:#f87171"></i><b>Recording, only</b><code>error #f87171</code></div>
+      </div></div>
+    <div class="card typeset"><h4>Type and shape</h4>
+      <p><span class="s1">Capture · Extract Text · Konsole</span><br>Geist Medium, 13.5 pixels, for every word on a button or label.</p>
+      <p><span class="s2">799×508 &nbsp; 0:42</span><br>Geist Mono, 12 pixels, for sizes and time, so numbers hold still as they change.</p>
+      <p>Rows are fully round and 36 pixels tall; buttons are round and 28 pixels tall, the family's small size. Menus and panels keep the design system's 8-pixel corners or a little more. No button is filled.</p></div>
+    <div class="card"><h4>Stays KDE's</h4>
+      <p>Breeze icons, so a tool looks the same here as in every KDE app. Plasma draws the notification and Settings. Pointer shapes and keys stay as they are. The record dot stays red, because every recorder uses red for recording; it is the only red in Ectolens.</p></div>
+  </div>
+
+  <div class="gap"></div>
+  <p class="label"><b>Settings › Appearance</b> a new page, drawn in your Breeze, as the Settings window is</p>
+  <div class="appear win" data-appearance></div>
+  <div class="gap"></div>
+  <p class="label"><b>The same row in each accent</b></p>
+  <div class="accents app" data-accents></div>
+</section>
+
+<section id="ideas">
+  <div class="sec-head">
+    <span class="kicker">05 · New tools for the row</span>
+    <h2>Ideas to cook up next to Extract Text</h2>
+    <p>Each one works on the frozen picture or the frame, the way Extract Text does. They are ideas, not decided: pick the ones worth building and they join the row after Extract Text.</p>
+  </div>
+  <div class="ideas" data-ideas></div>
+</section>
+
+<section id="frames">
+  <div class="sec-head">
+    <span class="kicker">06 · Across frames</span>
+    <h2>The same two rows on any frame</h2>
+    <p>Two rules place them everywhere. Each row is centered on the frame and slides sideways only as far as it must to stay on screen. A row with no room on its side of the frame moves just inside that edge. The rows never swap sides, so the tools are always above and the actions always below.</p>
+  </div>
+  <div class="minis app">
+    <figure><div class="mini artifact win"><div class="screen" data-scene="area"></div></div>
+      <figcaption><b>A small area you drew.</b> The label shows only its size, 380×230. The rows are wider than the frame and stay centered on it.</figcaption></figure>
+    <figure><div class="mini artifact win"><div class="screen" data-scene="bottom"></div></div>
+      <figcaption><b>Against the bottom of the screen.</b> No room below, so the actions move just inside the frame's bottom edge. The tools stay above.</figcaption></figure>
+    <figure><div class="mini artifact win"><div class="screen" data-scene="whole"></div></div>
+      <figcaption><b>The whole screen, from a click on the desktop.</b> Both rows move inside. The label shows a screen icon and the size, and its menu switches screens.</figcaption></figure>
+    <figure><div class="mini artifact win"><div class="screen" data-scene="right"></div></div>
+      <figcaption><b>At the right side of the screen.</b> Both rows slide left until they fit the screen, and stay at their sides of the frame.</figcaption></figure>
+  </div>
+</section>
+
+<section id="details">
+  <div class="sec-head">
+    <span class="kicker">07 · Details</span>
+    <h2>Options, keys and touch</h2>
+    <p>The gear at the end of the bottom row opens today's Options menu, word for word, minus its Recording Settings part, which moved into Record's panel, plus Close at the bottom.</p>
+  </div>
+  <div class="optrow">
+    <div class="app"><div class="menu-art win" data-optionsmenu></div></div>
+    <div class="cards one">
+      <div class="card"><h4>Taking all screens</h4><p>While you point, Enter captures all screens. The line at the top says so, so no bar is needed for it.</p></div>
+      <div class="card"><h4>Keys stay as they are</h4><p>Enter to capture, Esc to cancel, Ctrl+C to copy only, Ctrl+S to save only, Ctrl+Shift+S to save as, R to record. Print Screen stops a recording. Hovering a button shows its key.</p></div>
+      <div class="card"><h4>Pointer shapes stay as they are</h4><p>A crosshair outside the frame to draw a new one, resize arrows on its handles, an open hand inside it that closes while you move it, and the plain arrow over the rows.</p></div>
+      <div class="card"><h4>Touch</h4><p>Handles grow for a finger, as they do today. A finger cannot point first, so a tap takes the window under it and shows its label, the way a click does.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="build">
+  <div class="sec-head">
+    <span class="kicker">08 · Building it</span>
+    <h2>What changes in the code</h2>
+  </div>
+  <ol class="plan">
+    <li><b>The tokens</b> go in one QML file copied from the design system's <code>globals.css</code> and <code>button.tsx</code>, with the source named; every overlay part draws from it, and the accent is a setting. Geist and Geist Mono ship inside Ectolens under the SIL Open Font License 1.1; that is a new dependency and needs your yes.</li>
+    <li><b>The overlay</b> (<code>CaptureOverlay.qml</code>): the frame label at the start of the tools row, the two rows placed by the rules in section 06, the top line while pointing, Capture and Record as split buttons, and Options as a gear at the end of the bottom row, with Close in its menu. The centered hint, the bar shown before choosing, Export and the separate Options button go.</li>
+    <li><b>Capture:</b> the default becomes copy only (you mostly copy), with saving one check away, set from Capture's menu or Settings › General. After a capture from Print Screen the overlay closes instead of opening the Ectolens window (<code>SpectacleCore::showViewerIfGuiMode</code>). Export's items become checks in Capture's After Capture list (Open with, Share, Print, Show in folder), and Open in Ectolens becomes the first app under Open with; Extract Text by Language becomes Extract Text's arrow.</li>
+    <li><b>Set the size:</b> a window is resized through KWin's scripting, which Ectolens can load over D-Bus as the off-screen tests already do (a window's <code>frameGeometry</code> can be set). The size counts what the capture includes, so with titlebar and borders on, 1920×1080 includes them. The overlay retakes the frozen picture after the resize, and the window's old size comes back after the capture or recording. A window that refuses a size says so in the menu.</li>
+    <li><b>Settings › Appearance:</b> look (Ecto or your KDE colors), accent (Ecto green, your KDE accent, or a color you pick) and how dark the rest of the screen gets.</li>
+    <li><b>The notification</b> takes the app's name and the size as its title and says “Copied to the clipboard.” Its Save button writes the picture to Screenshots (Ectolens keeps the picture until the notification closes), and then it says where the file went and offers Open. Annotate stays.</li>
+    <li><b>The Record panel</b> is a popup drawn inside the overlay and replaces the Record menu.</li>
+    <li><b>The off-screen tests</b> (tour, input, settings, launch) move to the new layout. New runs: Print Screen's own start, Enter leaving no window open, and a window resized to a set size and put back.</li>
+  </ol>
+  <div class="sec-head" style="margin-top:44px"><span class="kicker">Where the ideas came from</span></div>
+  <ul class="refs">
+    <li><b>Windows 11's Snipping Tool</b> copies every capture to the clipboard and keeps saving as its own setting; here copying is the default and saving is one click away on the notification. <a href="https://www.elevenforum.com/t/enable-or-disable-snipping-tool-auto-save-screenshots-in-windows-11.9418/">elevenforum.com</a></li>
+    <li><b>macOS's Screenshot toolbar</b> keeps Record beside its picture choices and puts where captures are saved in a menu. <a href="https://support.apple.com/102618">Apple</a>, <a href="https://www.macworld.com/article/226469/how-to-take-screenshots-on-your-mac.html">Macworld</a></li>
+    <li><b>KDE's own forum, “Redesign Spectacle”:</b> people found unlabeled icons hard to read and wanted actions as first-class buttons. So the actions keep their words. <a href="https://discuss.kde.org/t/redesign-spectacle/15127">discuss.kde.org/t/redesign-spectacle</a></li>
+    <li><b>KWin's scripting API</b> for resizing a window: <a href="https://develop.kde.org/docs/plasma/kwin/api/">develop.kde.org/docs/plasma/kwin/api</a></li>
+    <li><b>Ectonomic's design system</b>: the colors, corners, button drawing, segmented control, chips and the rule that the accent marks where you are.</li>
+    <li><b>Review notes</b> on this mock: no Enter on the button, a menu on Capture, Capture and Record together, new tools like Extract Text, the label apart from the tools and setting the size, and accent choices.</li>
+  </ul>
+</section>
+</main>
+
+<script>
+const SCREEN = {w: 1600, h: 900}, M = 8, GAP = 15; // GAP: the 9 px handle plus 6 px of air
+const KONSOLE = {x: 400, y: 196, w: 799, h: 508};  // Konsole's frame in the captures
+const fmt = n => n.toLocaleString('en-US');
+const size = F => `${fmt(F.w)}×${fmt(F.h)}`;
+const I = (n, cls = 'i') => `<img class="${cls}" src="icons/${n}.svg" alt="">`;
+const dd = `<img class="dd" src="icons/arrow-down.svg" alt="">`;
+const B = (icon, text, cls = '') => `<span class="tbtn ${cls}">${icon ? I(icon) : ''}${text ? `<span>${text}</span>` : ''}</span>`;
+const IO = (icon, cls = '') => `<span class="tbtn io ${cls}">${I(icon)}</span>`;
+const SEP = `<span class="tsep"></span>`;
+const OPTIONS = `<span class="tbtn">${I('configure')}<span>Options</span>${dd}</span>`;
+const CHECK = (on, label) => `<span class="chk ${on ? 'on' : ''}"><span class="box"></span>${label}</span>`;
+const HANDLES = ['tl','t','tr','l','r','bl','b','br'].map(c => `<span class="h ${c}"></span>`).join('');
+const SPLIT = (part, icon, text, down) => `<span class="split" data-part="${part}">${B(icon, text)}<span class="tbtn arrow ${down ? 'down' : ''}">${I('arrow-down')}</span></span>`;
+const LABEL = (F, who = {}) => `<span class="who menu" data-part="label">${who.icon ? I(who.icon, 'i22') : ''}<span class="dim">${size(F)}</span>${dd}</span>`; // the window's icon and the size; no name
+const GEAR = `<span class="tbtn io" data-part="gear">${I('gear')}</span>`;
+const TOOLS = `<div class="ftb" data-part="tools">${IO('edit-undo', 'off')}${IO('edit-redo', 'off')}${SEP}${IO('transform-crop', 'on')}${IO('edit-select')}${SEP}${IO('draw-freehand')}${IO('draw-highlight')}${IO('draw-line')}${IO('draw-arrow')}${SEP}${IO('draw-rectangle')}${IO('draw-ellipse')}${SEP}${IO('pixelate')}${IO('blur')}${SEP}${IO('draw-text')}${IO('draw-number')}</div>`;
+const TOP = (F, who) => `<div class="rowwrap" data-row="top">${TOOLS.replace('<div class="ftb" data-part="tools">', '<div class="ftb" data-part="tools">' + LABEL(F, who) + SEP)}</div>`;
+const BAR = (F, who, open = '', hidden = false) => `<div class="ftb" data-row="bottom" ${hidden ? 'style="visibility:hidden"' : ''}>${SPLIT('capture', 'camera-photo', 'Capture', open === 'capture')}${SPLIT('record', 'media-record', 'Record', open === 'record')}${SEP}<span style="display:contents" data-part="extras">${SPLIT('extract', 'document-scan', 'Extract Text')}</span>${SEP}<span style="display:contents" data-part="end">${GEAR}</span></div>`;
+// Handles: three-quarter circles at the corners and half circles on the edges that curve into the
+// frame line instead of stopping in a notch (round handles). R handle, f join curve, T line.
+const HR = 7, HF = 4, HT = 1, HXF = Math.sqrt((HR + HF) ** 2 - HF ** 2);
+const onC = (x, y) => { const d = Math.hypot(x, y); return [x * HR / d, y * HR / d].map(v => v.toFixed(2)); };
+const CORNER = (() => { const R = 7, F = 4, XF = Math.sqrt((R + F) ** 2 - F ** 2), on = (x, y) => { const d = Math.hypot(x, y); return [x * R / d, y * R / d].map(v => v.toFixed(2)); };
+  const [a, b] = on(XF, -F), [c, d] = on(-F, XF), xf = XF.toFixed(2); // corners a little smaller than the edges
+  return `M ${xf} 0 A ${F} ${F} 0 0 1 ${a} ${b} A ${R} ${R} 0 1 0 ${c} ${d} A ${F} ${F} 0 0 1 0 ${xf} L ${HT} ${xf} L ${HT} ${HT} L ${xf} ${HT} Z`; })();
+const EDGE = (() => { const [a, b] = onC(-HXF, -HF), [c, d] = onC(HXF, -HF);
+  return `M ${(-HXF).toFixed(2)} 0 A ${HF} ${HF} 0 0 0 ${a} ${b} A ${HR} ${HR} 0 0 1 ${c} ${d} A ${HF} ${HF} 0 0 0 ${HXF.toFixed(2)} 0 L ${HXF.toFixed(2)} ${HT} L ${(-HXF).toFixed(2)} ${HT} Z`; })();
+const HANDLE_SVG = F => { const W = F.w, H = F.h, at = (x, y, r, d) => `<path transform="translate(${x} ${y}) rotate(${r})" d="${d}"/>`;
+  return `<svg class="handles" width="${W + 40}" height="${H + 40}" viewBox="-20 -20 ${W + 40} ${H + 40}">${at(0, 0, 0, CORNER)}${at(W, 0, 90, CORNER)}${at(W, H, 180, CORNER)}${at(0, H, 270, CORNER)}${at(W / 2, 0, 0, EDGE)}${at(W, H / 2, 90, EDGE)}${at(W / 2, H, 180, EDGE)}${at(0, H / 2, 270, EDGE)}</svg>`; };
+const FRAME = F => `<div class="frame" style="left:${F.x}px;top:${F.y}px;width:${F.w}px;height:${F.h}px">${HANDLE_SVG(F)}</div>`;
+const CROSS = `<svg class="cursor" width="23" height="23" viewBox="0 0 23 23"><path d="M11.5 1v8M11.5 14v8M1 11.5h8M14 11.5h8" stroke="#000" stroke-width="3"/><path d="M11.5 1v8M11.5 14v8M1 11.5h8M14 11.5h8" stroke="#fff" stroke-width="1"/></svg>`;
+const ARROW = `<svg class="cursor" width="20" height="26" viewBox="0 0 20 26"><path d="M2 2 L2 21 L7 16.5 L10.5 24 L13.5 22.6 L10 15.2 L17 15.2 Z" fill="#232627" stroke="#fcfcfc" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
+const KONSOLE_WHO = {icon: 'utilities-terminal', name: 'Konsole'};
+const framed = (F, who, open = '') => `${FRAME(F)}${TOP(F, who)}${BAR(F, who, open)}`;
+const MI = (inner, cls = '') => `<div class="mi ${cls}">${inner}</div>`;
+const MH = t => `<div class="mh">${t}</div>`, MS = `<div class="ms"></div>`;
+const SUB = `<img class="sub" src="icons/arrow-down.svg" alt="">`;
+// After Capture: each feature is a check that stacks; how it works is the choice at the end of its row.
+// Save to file comes before Copy because a file path needs the saved file: File Path is locked until Save to file is checked.
+const SEG = (keys, names, on, dim = false, locked = []) => `<span class="seg${dim ? ' dim' : ''}">${keys.map(k => `<span class="${k === on ? 'on' : ''}${locked.includes(k) ? ' locked' : ''}">${names[k]}</span>`).join('')}</span>`;
+const AFTER = (copy, clip, save, where) => MH('After Capture')
+  + `<div class="mrow">${CHECK(false, 'Open with')}${PICK('Ectolens', true)}</div>`
+  + `<div class="mrow">${CHECK(save, 'Save to file')}${SEG(['shots', 'ask'], {shots: 'Screenshots', ask: 'Ask where each time'}, where, !save)}</div>`
+  + `<div class="mrow${save ? '' : ' locked'}">${CHECK(false, 'Show in folder')}</div>`
+  + `<div class="mrow">${CHECK(copy, 'Copy to clipboard')}${SEG(['picture', 'path'], {picture: 'Image', path: 'File Path'}, clip, !copy, save ? [] : ['path'])}</div>`
+  + `<div class="mrow">${CHECK(false, 'Share')}${PICK('Ask each time', true)}</div>`
+
+// a dropdown at the end of a row: the chosen app or service, with its arrow
+const PICK = (v, dim) => `<span class="pickx${dim ? ' dim' : ''}">${v}${dd}</span>`;
+const CAPTURE_MENU = AFTER(true, 'picture', false, 'shots');
+// The Ectolens window, redrawn in the overlay's parts (Breeze title bar stays: KWin draws it).
+const CHEV = d => `<svg width="12" height="12" viewBox="0 0 12 12"><path d="${d}" fill="none" stroke="#fcfcfc" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+// The window's rows dock to its edges, their groups anchored to the sides.
+// One drawing for every window state; each stage says which with data- attributes:
+// data-mainwin (view | empty | video), data-menu (save | new | gear | zoom), data-tool (rect | crop),
+// data-msg (saved,qr), data-size (real), data-narrow, data-light, data-zoom.
+const TOOLSET = TOOLS.replace('<div class="ftb" data-part="tools">', '').replace(/<\/div>$/, '');
+const toolOn = (set, name) => set.replace('<span class="tbtn io on">', '<span class="tbtn io ">').replace(`<span class="tbtn io "><img class="i" src="icons/${name}.svg"`, `<span class="tbtn io on"><img class="i" src="icons/${name}.svg"`);
+const W_LABEL = (text) => `<span class="who menu info" data-part="label"><span class="dim">${text}</span></span>`;  // information, not a control
+const W_TOP = (o) => `<div class="mw-dock top"><span class="grp">${o.state === 'empty' || o.narrow ? '' : W_LABEL(o.state === 'video' ? '1920×1080 · 0:42' : '799×508')}</span>`
+  + `<span class="grp mid">${o.state === 'view' ? toolOn(TOOLSET, o.tool === 'rect' ? 'draw-rectangle' : 'transform-crop') : ''}</span><span class="grp">${GEAR}</span></div>`;
+const ZOOM = (o) => `<span class="tbtn quiet" data-part="w-zoom">${o.zoom || 'Fit'}${dd}</span>`;
+const W_BOTTOM = (o) => {
+  if (o.state === 'empty') return `<div class="mw-dock bottom"><span class="grp"></span><span class="grp">${SPLIT('w-new', 'camera-photo', 'New Capture')}</span></div>`;
+  const left = o.state === 'video'
+    ? `<span class="tbtn io">${I('media-playback-start')}</span><span class="scrub"><i style="width:28%"></i></span><span class="time">0:12 / 0:42</span>${SEP}${SPLIT('w-copy', 'edit-copy', 'Copy')}${SPLIT('w-save', 'document-save', 'Save', o.menu === 'save')}`
+    : `${SPLIT('w-copy', 'edit-copy', 'Copy')}${SPLIT('w-save', 'document-save', 'Save', o.menu === 'save')}${SEP}${SPLIT('w-ocr', 'document-scan', 'Extract Text')}`;
+  return `<div class="mw-dock bottom"><span class="grp">${left}</span><span class="grp">${o.state === 'video' ? '' : ZOOM(o)}${SPLIT('w-new', 'camera-photo', 'New Capture')}</span></div>`;
+};
+// Under the tools while a tool is in use: that tool's settings (Spectacle's own: Stroke, Fill, Shadow; Font, Number, Strength for others).
+const SWATCH = c => `<span class="swatch" style="${c ? `background:${c}` : ''}"></span>`;
+const W_OPTS = (o) => o.tool === 'rect'
+  ? `<div class="mw-opts"><div class="ftb"><span class="optk">Stroke</span><span class="tbtn">${SWATCH('#f87171')}${dd}</span><span class="tbtn mono">4 px${dd}</span>${SEP}<span class="optk">Fill</span><span class="tbtn">${SWATCH('')}${dd}</span>${SEP}${CHECK(true, 'Shadow')}</div></div>`
+  : o.tool === 'crop'
+  ? `<div class="mw-opts"><div class="ftb"><span class="optk">Crop to 420×280</span>${SEP}<span class="tbtn">${I('dialog-cancel')}<span>Cancel</span></span><span class="tbtn">${I('dialog-ok-apply')}<span>Apply</span></span></div></div>` : '';
+// Messages: one strip per kind under the top row, newest on top, each with its one action (Spectacle's kinds: Saved, Copied, Scanned, Error).
+const MSG = {
+  saved: ['done', 'Saved as <b>Screenshot_20261102_052400.png</b> in Screenshots', 'Show in Folder'],
+  qr: ['progress', 'Found a QR code: <b>https://ectonomic.com</b>', 'Open'],
+  text: ['done', 'Copied the text: <b>9 lines</b>', 'Show Text'],
+  error: ['error', 'Couldn\'t save to <b>/mnt/backup</b>: the folder is read-only', 'Save As…'],
+};
+const W_MSGS = (o) => (o.msg || '').split(',').filter(Boolean).map((k, i) => { const [tone, text, act] = MSG[k];
+  return `<div class="mw-msg ${tone}" style="top:${44 + i * 38}px"><span class="mdot"></span><span class="mtext">${text}</span><span class="tbtn">${act}</span><span class="tbtn io">${I('window-close')}</span></div>`; }).join('');
+const MENUS = {
+  save: ['w-save', MH('Save') + MI(`${I('document-save-as')}Save As…<span class="sc">Ctrl+Shift+S</span>`, 'hot') + MI(`${I('document-open-folder')}Show in Folder`, 'dis')
+    + MS + MH('Send to') + MI(`${I('document-open')}Open With${SUB}`) + MI(`${I('document-share')}Share${SUB}`) + MI(`${I('document-print')}Print…<span class="sc">Ctrl+P</span>`)],
+  new: ['w-new', MH('New Capture') + MI(`${I('crosshairs')}Region or Window<span class="sc">Print</span>`, 'hot') + MI(`${I('monitor')}Full Screen<span class="sc">Shift+Print</span>`)
+    + MI(`${I('window')}Active Window<span class="sc">Meta+Print</span>`) + MS
+    + MI(CHECK(true, 'Include mouse pointer')) + MI(CHECK(true, 'Include window titlebar and borders')) + MI(CHECK(false, 'Include window shadow'))
+    + MI(`<span class="mk">Delay:</span><span class="spin">No Delay</span>`)],
+  gear: ['gear', MI(`${I('configure')}Settings…<span class="sc">Ctrl+Shift+,</span>`, 'hot') + MI(`${I('configure-shortcuts')}Keyboard Shortcuts…`) + MS
+    + MI(`${I('help-contents')}Ectolens Help<span class="sc">F1</span>`) + MI(`${I('tools-report-bug')}Report a Bug…`) + MI(`${I('help-about')}About Ectolens`)],
+  zoom: ['w-zoom', MI(`<span class="tick"></span>Fit to Window<span class="sc">Ctrl+0</span>`) + MI(`<span class="tick"></span>Actual Size<span class="sc">Ctrl+1</span>`)
+    + MI(`<span class="tick">✓</span>150%`, 'hot') + MI(`<span class="tick"></span>200%`) + MS
+    + MI(`${I('zoom-in')}Zoom In<span class="sc">Ctrl++</span>`) + MI(`${I('zoom-out')}Zoom Out<span class="sc">Ctrl+−</span>`)],
+};
+const TITLE = o => o.state === 'empty' ? 'Ectolens' : o.msg && o.msg.includes('saved') ? 'Screenshot_20261102_052400.png — Ectolens' : o.state === 'video' ? 'Unsaved* — Ectolens' : 'Unsaved* — Ectolens';
+const MAINWIN = (o) => `<div class="mw app${o.real ? ' real' : ''}${o.narrow ? ' narrow' : ''}${o.light ? ' lightapp' : ''}">
+  <div class="mw-title">${I('ectolens')}<span class="t">${TITLE(o)}</span><span class="ctl">${CHEV('M2.5 4.5 6 8l3.5-3.5')}${CHEV('M2.5 7.5 6 4l3.5 3.5')}${CHEV('M3 3l6 6M9 3 3 9')}</span></div>
+  <div class="mw-canvas">
+    ${W_TOP(o)}${W_MSGS(o)}${W_OPTS(o)}
+    ${o.state === 'empty' ? `<div class="mw-empty"><span>Nothing captured yet</span><span class="kbd">Print</span><span>or New Capture</span></div>`
+      : `<div class="mw-img${o.zoom ? ' zoomed' : ''}${o.state === 'video' ? ' video' : ''}">${o.tool === 'crop' ? FRAME({x: 150, y: 90, w: 420, h: 280}) : ''}${o.tool === 'rect' ? '<span class="drawn"></span>' : ''}${o.state === 'video' ? `<span class="playbig">${I('media-playback-start')}</span>` : ''}</div>`}
+    ${W_BOTTOM(o)}
+    ${o.menu ? `<div class="menu-art mw-menu" data-wmenu="${MENUS[o.menu][0]}">${MENUS[o.menu][1]}</div>` : ''}
+  </div>
+</div>`;
+document.querySelectorAll('[data-mainwin]').forEach(el => {
+  const d = el.dataset;
+  el.innerHTML = MAINWIN({state: d.mainwin, menu: d.menu, real: d.size === 'real', tool: d.tool, msg: d.msg, narrow: 'narrow' in d, light: 'light' in d, zoom: d.zoom});
+  const m = el.querySelector('[data-wmenu]');
+  if (m) { const place = () => {
+      const cv = el.querySelector('.mw-canvas'), c = cv.getBoundingClientRect(), k = c.width / cv.offsetWidth;
+      const a = el.querySelector(`[data-part=${m.dataset.wmenu}]`).getBoundingClientRect();
+      const right = (a.left + a.width / 2 - c.left) / k > cv.offsetWidth / 2, inTop = (a.top - c.top) / k < 60;
+      m.style.left = (right ? (a.right - c.left) / k - m.offsetWidth : (a.left - c.left) / k) + 'px';
+      m.style.top = (inTop ? (a.bottom - c.top) / k + 8 : (el.querySelector('.mw-dock.bottom').getBoundingClientRect().top - c.top) / k - 6 - m.offsetHeight) + 'px'; };
+    place(); if (document.fonts) document.fonts.ready.then(place); window.addEventListener('load', place); }
+});
+const SIZE_MENU = MH('Size of the capture') + `<div class="fields"><span class="in focus">1920</span>×<span class="in">1080</span>${I('object-locked')}</div>` + MS
+  + MI(`<span class="tick">✓</span>1920×1080<span class="note2">Full HD, 16:9</span>`, 'hot') + MI(`<span class="tick"></span>1280×720<span class="note2">HD, 16:9</span>`)
+  + MI(`<span class="tick"></span>2560×1080<span class="note2">Ultrawide, 21:9</span>`) + MI(`<span class="tick"></span>1080×1080<span class="note2">Square</span>`)
+  + MI(`<span class="tick"></span>1080×1920<span class="why">Taller than the screen</span>`, 'dis') + MI(`<span class="tick"></span>799×508<span class="note2">As it was</span>`) + MS
+  + MI(CHECK(true, 'Resize Konsole to fit')) + MI(CHECK(true, 'Revert size afterward'));
+const OPTIONS_MENU = MH('Screenshot Settings') + MI(CHECK(true, 'Include mouse pointer')) + MI(CHECK(true, 'Include window titlebar and borders'))
+  + MI(CHECK(false, 'Include window shadow')) + MI(CHECK(false, 'Quit after manual Save or Copy'))
+  + MI(`<span class="mk">Delay:</span><span class="spin">No Delay</span>`) + MS + MI(`${I('configure')}Configure Ectolens…`) + MS + MI(`${I('window-close')}Close<span class="sc">Esc</span>`);
+
+const SCENES = {
+  pointing: () => ({F: KONSOLE, html: `<div class="spot" style="left:${KONSOLE.x}px;top:${KONSOLE.y}px;width:${KONSOLE.w}px;height:${KONSOLE.h}px"></div>
+    <div class="ftb" data-row="top">${LABEL(KONSOLE, KONSOLE_WHO)}</div>
+    <div class="ftb hint" style="left:800px;top:16px;transform:translateX(-50%)">${I('crosshairs')}<span class="say">Click a window or the desktop, or drag an area</span>
+      <span class="kbd">Enter</span><span>all screens</span><span class="kbd">Esc</span><span>cancel</span>${SEP}${GEAR}</div>
+    <div style="position:absolute;left:688px;top:368px">${CROSS}</div>`}),
+  framed: () => ({F: KONSOLE, html: framed(KONSOLE, KONSOLE_WHO)}),
+  done: () => ({F: null, html: `<div class="note-plasma">
+      <div class="head">${I('ectolens')}<span>Ectolens</span><span class="sp"></span><span>Just now</span>${I('window-close')}</div>
+      <div class="t">Konsole 799×508</div>
+      <div class="b">Copied to the clipboard.</div>
+      <div class="thumb"></div>
+      <div class="acts"><span>Save</span><span>Annotate</span></div>
+    </div>
+    <div style="position:absolute;left:760px;top:600px">${ARROW}</div>`}),
+  capmenu: () => ({F: KONSOLE, html: framed(KONSOLE, KONSOLE_WHO, 'capture') + `<div class="menu-art pos app" data-capmenu>${CAPTURE_MENU}</div>`}),
+  popover: () => ({F: KONSOLE, html: framed(KONSOLE, KONSOLE_WHO, 'record') + `
+    <div class="pop app" data-pop>
+      <div class="row top"><span class="k">Include</span><span class="checks">${CHECK(false, 'System audio')}${CHECK(true, 'Microphone')}${CHECK(true, 'Mouse pointer')}</span></div>
+      <div class="row"><span class="k">Quality</span><span class="seg"><span>Small File</span><span class="on">High</span><span>Best</span></span><span class="note">About 27 MB a minute with x264. Text stays sharp, and it plays everywhere.</span></div>
+      <div class="row"><span class="k">Frame Rate</span><span class="seg"><span>30</span><span class="on">60</span><span>120</span><span>240</span></span></div>
+      <div class="row"><span class="k">Format</span><span class="seg"><span class="on">MP4</span><span>WebM</span><span>GIF</span><span>WebP</span></span></div>
+      <div class="foot"><span>${I('configure')}Recording Settings…</span></div>
+    </div>`}),
+  recording: () => ({F: KONSOLE, html: `<div class="dashed" style="left:${KONSOLE.x - 1}px;top:${KONSOLE.y - 1}px;width:${KONSOLE.w + 2}px;height:${KONSOLE.h + 2}px"></div>
+    ${BAR(KONSOLE, KONSOLE_WHO, '', true)}
+    <div class="ftb" data-recbar><span class="timer"><span class="dot"></span>0:42</span><span class="chipk">${I('mic-on')}Mic</span>${SEP}${B('media-playback-pause', 'Pause')}${B('media-playback-stop', 'Stop')}</div>
+    <div style="position:absolute;left:690px;top:420px">${ARROW}</div>`}),
+  area: () => { const F = {x: 610, y: 330, w: 380, h: 230}; return {F, html: framed(F, {})}; },
+  bottom: () => { const F = {x: 240, y: 520, w: 760, h: 370}; return {F, html: framed(F, {})}; },
+  whole: () => { const F = {x: 0, y: 0, w: 1600, h: 900}; return {F, html: framed(F, {icon: 'monitor', name: 'Screen'})}; },
+  right: () => { const F = {x: 1300, y: 170, w: 280, h: 190}; return {F, html: framed(F, {})}; },
+};
+
+// Settings > Appearance, the accent strips and the ideas
+const ACCENTS = [['Ecto green (default)', '#c8f22e'], ['Your KDE accent', '#FF4500'], ['A color you pick', '#38bdf8']];
+document.querySelector('[data-appearance]').innerHTML = `<div class="side">
+    <div>${I('configure', 'i22')}General</div><div>${I('folder-pictures', 'i22')}Image Saving</div><div>${I('media-record', 'i22')}Recording</div>
+    <div class="on">${I('preferences-desktop-color', 'i22')}Appearance</div><div>${I('input-keyboard', 'i22')}Shortcuts</div></div>
+  <div class="page"><h5>Appearance</h5>
+    <div class="f"><span class="k">Look:</span><div><div class="radios"><span class="r on"><span class="dot"></span>Ecto: dark rows, Geist type</span><span class="r"><span class="dot"></span>Your KDE colors and fonts</span></div></div></div>
+    <div class="f"><span class="k">Accent:</span><div><div class="radios">
+      <span class="r on"><span class="dot"></span><span class="chip" style="background:#c8f22e"></span>Ecto green</span>
+      <span class="r"><span class="dot"></span><span class="chip" style="background:#FF4500"></span>Your KDE accent</span>
+      <span class="r"><span class="dot"></span><span class="chip" style="background:#38bdf8"></span>Custom: <span class="pick"><span class="chip" style="background:#38bdf8;width:14px;height:14px"></span>#38BDF8</span></span></div>
+      <div class="hint2">Colors the frame, the window under the pointer, the tool in use and checked boxes.</div></div></div>
+    <div class="f"><span class="k">Dim the rest:</span><div><div class="slider"><span class="fill" style="width:40%"></span><span class="knob" style="left:calc(40% - 8px)"></span></div><div class="ends"><span>None</span><span>40%</span><span>Dark</span></div></div></div>
+    <div class="f"><span class="k">Preview:</span><div class="preview app win"><div class="screen" data-scene="framed"></div></div></div>
+  </div>`;
+document.querySelector('[data-accents]').innerHTML = ACCENTS.map(([name, c]) =>
+  `<figure><div class="strip artifact win" style="--brand:${c}"><div class="screen" data-scene="framed"></div></div><figcaption><b>${name}</b> · ${c.toUpperCase()}</figcaption></figure>`).join('');
+const IDEAS = [
+  ['document-scan', 'Extract Text', 'there today', 'Reads the words in the frame and copies them. Its arrow picks the language.'],
+  ['view-hidden', 'Hide Private Info', 'recommended', 'Finds email addresses, keys, tokens and home-folder paths with the same text reader and blurs them in one press, before the picture leaves your screen.'],
+  ['window-pin', 'Pin', 'recommended', 'Keeps the capture floating above your windows as a reference while you work. Drag it anywhere; Esc closes it.'],
+  ['view-barcode-qr', 'Open QR Code', 'appears when found', 'Ectolens already reads QR codes in every capture and only shows a message. When the frame holds one, this button appears and opens or copies what it says.'],
+  ['color-picker', 'Pick Color', 'idea', 'Click any pixel in the frame to copy its hex color.'],
+  ['measure', 'Measure', 'idea', 'Drag between two points to see the distance in pixels, for checking layouts.'],
+];
+document.querySelector('[data-ideas]').innerHTML = IDEAS.map(([icon, name, tag, text]) =>
+  `<div class="idea"><div class="btnrow app">${B(icon, name)}</div><h4>${name}<small>${tag}</small></h4><p>${text}</p></div>`).join('');
+document.querySelector('[data-sizemenu]').innerHTML = SIZE_MENU;
+document.querySelector('[data-after=path]').innerHTML = AFTER(true, 'path', true, 'shots');
+document.querySelector('[data-optionsmenu]').innerHTML = OPTIONS_MENU;
+
+const built = [];
+document.querySelectorAll('[data-scene]').forEach(el => {
+  const s = SCENES[el.dataset.scene]();
+  el.innerHTML = s.html;
+  if (el.dataset.crop) { const [x, y] = el.dataset.crop.split(',').map(Number); el.style.left = -x + 'px'; el.style.top = -y + 'px'; }
+  built.push({el, F: s.F});
+});
+
+function placeRow(row, F, side) {
+  const w = row.offsetWidth, h = row.offsetHeight;
+  const x = Math.max(M, Math.min(F.x + F.w / 2 - w / 2, SCREEN.w - M - w)); // centered on the frame, kept on screen
+  let y = side === 'top' ? F.y - GAP - h : F.y + F.h + GAP;
+  if (side === 'top' && y < M) y = F.y + GAP;
+  if (side === 'bottom' && y + h > SCREEN.h - M) y = F.y + F.h - GAP - h;
+  row.style.left = x + 'px'; row.style.top = y + 'px';
+}
+const offsetIn = (el, sc) => { let x = 0, y = 0; for (let n = el; n && n !== sc; n = n.offsetParent) { x += n.offsetLeft; y += n.offsetTop; } return {x, y}; };
+
+function place() {
+  for (const {el: sc, F} of built) {
+    if (!F) continue;
+    const top = sc.querySelector('[data-row=top]'), bar = sc.querySelector('[data-row=bottom]');
+    if (top) placeRow(top, F, 'top');
+    if (bar) placeRow(bar, F, 'bottom');
+    const pop = sc.querySelector('[data-pop]');
+    if (pop && bar) {
+      const rec = sc.querySelector('[data-part=record]'), r = offsetIn(rec, sc);
+      pop.style.left = Math.max(M, r.x + rec.offsetWidth - pop.offsetWidth) + 'px';
+      pop.style.top = (bar.offsetTop - 6 - pop.offsetHeight) + 'px';
+    }
+    const cm = sc.querySelector('[data-capmenu]');
+    if (cm && bar) {
+      const cap = sc.querySelector('[data-part=capture]'), r = offsetIn(cap, sc);
+      cm.style.left = r.x + 'px';
+      cm.style.top = (bar.offsetTop - 6 - cm.offsetHeight) + 'px';
+    }
+    const recbar = sc.querySelector('[data-recbar]');
+    if (recbar && bar) {
+      const rec = sc.querySelector('[data-part=record] > .tbtn'), r = offsetIn(rec, sc);
+      const stop = recbar.querySelector(':scope > .tbtn:last-child');
+      recbar.style.left = (r.x + rec.offsetWidth / 2 - (stop.offsetLeft + stop.offsetWidth / 2)) + 'px';
+      recbar.style.top = bar.style.top;
+    }
+  }
+  const an = document.getElementById('anat');
+  an.querySelectorAll('.badge').forEach(n => n.remove());
+  const a = an.getBoundingClientRect(), sc = an.querySelector('.screen');
+  const span = els => { const rs = [...els].map(e => e.getBoundingClientRect()); const l = Math.min(...rs.map(r => r.left)), r = Math.max(...rs.map(r => r.right)); return {left: l, width: r - l, top: Math.min(...rs.map(r => r.top)), bottom: Math.max(...rs.map(r => r.bottom))}; };
+  const badge = (n, x, y) => an.insertAdjacentHTML('beforeend', `<span class="badge" style="left:${x - a.left - 12}px;top:${y - a.top}px">${n}</span>`);
+  const over = (n, r) => badge(n, r.left + r.width / 2, r.top - 8 - 24);
+  const under = (n, r) => badge(n, r.left + r.width / 2, r.bottom + 8);
+  over(1, span(sc.querySelectorAll('[data-row=top] [data-part=label]')));
+  over(2, span(sc.querySelectorAll('[data-part=tools] .tbtn')));
+  const fr = sc.querySelector('.frame').getBoundingClientRect();
+  badge(3, fr.left - 9 - 8 - 12, fr.top + fr.height / 2 - 12);
+  under(4, span(sc.querySelectorAll('[data-part=capture], [data-part=record]')));
+  under(5, span(sc.querySelectorAll('[data-part=extract]')));
+  under(6, span(sc.querySelectorAll('[data-part=end] .tbtn')));
+}
+place();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(place);
+window.addEventListener('load', place);
+</script>
+</body>
+</html>

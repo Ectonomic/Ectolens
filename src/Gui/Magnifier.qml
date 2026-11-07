@@ -8,7 +8,7 @@ import QtQuick.Window
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import org.kde.spectacle.private
-import org.kde.kquickimageeditor
+import org.kde.kquickimageeditor.ectolens
 
 ShaderEffectSource {
     id: root

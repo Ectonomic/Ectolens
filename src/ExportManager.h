@@ -44,6 +44,8 @@ public:
         CopyImage   = 0b00100,
         CopyPath    = 0b01000,
         UserAction  = 0b10000,
+        // Ectolens: Save to file asked where, and the dialog was cancelled.
+        SaveDeclined = 0b100000,
         AnySave     = Save | SaveAs,
         AnyAction   = AnySave | CopyImage | CopyPath,
     };

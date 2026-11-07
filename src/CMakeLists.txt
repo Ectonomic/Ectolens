@@ -16,25 +16,30 @@ ecm_qt_declare_logging_category(SPECTACLE_SRCS
     EXPORT SPECTACLE
 )
 
-add_executable(spectacle)
-qt_add_qml_module(spectacle URI ${SPECTACLE_QML_URI} DEPENDENCIES QtCore QtQuick)
+add_executable(ectolens)
+qt_add_qml_module(ectolens URI ${SPECTACLE_QML_URI} DEPENDENCIES QtCore QtQuick IMPORT_PATH "${CMAKE_BINARY_DIR}/qml")
 
-target_sources(spectacle PRIVATE
+target_sources(ectolens PRIVATE
     ${SPECTACLE_SRCS}
+    AgentService.cpp
     CaptureModeModel.cpp
     CommandLineOptions.cpp
     ExportManager.cpp
     Geometry.cpp
     OcrManager.cpp
+    Gui/CaptureTools.cpp
     Gui/CaptureWindow.cpp
+    Gui/FrameHistory.cpp
+    Gui/PinWindow.cpp
     Gui/ExportMenu.cpp
     Gui/HelpMenu.cpp
     Gui/InlineMessageModel.cpp
     Gui/OptionsMenu.cpp
-    Gui/RecordingModeMenu.cpp
-    Gui/ScreenshotModeMenu.cpp
+    TestScript.cpp
     Gui/Selection.cpp
     Gui/SelectionEditor.cpp
+    Gui/SettingsDialog/AppearanceOptionsPage.cpp
+    Gui/SettingsDialog/AgentsOptionsPage.cpp
     Gui/SettingsDialog/GeneralOptionsPage.cpp
     Gui/SettingsDialog/ImageSaveOptionsPage.cpp
     Gui/SettingsDialog/OcrLanguageSelector.cpp
@@ -42,6 +47,7 @@ target_sources(spectacle PRIVATE
     Gui/SettingsDialog/ShortcutsOptionsPage.cpp
     Gui/SettingsDialog/VideoFormatComboBox.cpp
     Gui/SettingsDialog/VideoSaveOptionsPage.cpp
+    Gui/SettingsDialog/RecordingOptionsPage.cpp
     Gui/SmartSpinBox.cpp
     Gui/SpectacleMenu.cpp
     Gui/SpectacleWindow.cpp
@@ -49,6 +55,7 @@ target_sources(spectacle PRIVATE
     Gui/ViewerWindow.cpp
     Main.cpp
     PlasmaVersion.cpp
+    PrivateInfo.cpp
     Platforms/ImagePlatform.cpp
     Platforms/ImagePlatformKWin.cpp
     Platforms/PlatformLoader.cpp
@@ -56,47 +63,51 @@ target_sources(spectacle PRIVATE
     Platforms/screencasting.cpp
     Platforms/VideoPlatform.cpp
     Platforms/VideoPlatformWayland.cpp
+    Platforms/WindowPicker.cpp
+    Platforms/RecordingQuality.cpp
     RecordingModeModel.cpp
     ScreenShotEffect.cpp
     ShortcutActions.cpp
     SpectacleCore.cpp
+    StartupClock.cpp
     SpectacleDBusAdapter.cpp
     VideoFormatModel.cpp
 )
 
 if(WITH_X11)
-    target_sources(spectacle PRIVATE Platforms/ImagePlatformXcb.cpp Platforms/ImagePlatformXcb.h)
+    target_sources(ectolens PRIVATE Platforms/ImagePlatformXcb.cpp Platforms/ImagePlatformXcb.h)
 
-    target_link_libraries(spectacle PRIVATE
+    target_link_libraries(ectolens PRIVATE
         XCB::XFIXES
         XCB::IMAGE
         XCB::CURSOR
         XCB::UTIL
         XCB::RANDR
     )
-    target_link_libraries(spectacle PRIVATE Qt6::GuiPrivate) # Gui/private/qtx11extras_p.h
+    target_link_libraries(ectolens PRIVATE Qt6::GuiPrivate) # Gui/private/qtx11extras_p.h
 endif()
 
-qt6_generate_wayland_protocol_client_sources(spectacle
+qt6_generate_wayland_protocol_client_sources(ectolens
     PRIVATE_CODE
     FILES
         ${PLASMA_WAYLAND_PROTOCOLS_DIR}/zkde-screencast-unstable-v1.xml
+        ${PLASMA_WAYLAND_PROTOCOLS_DIR}/plasma-window-management.xml
 )
 
 if(PURPOSE_FOUND)
-    target_link_libraries(spectacle PRIVATE KF6::PurposeWidgets)
+    target_link_libraries(ectolens PRIVATE KF6::PurposeWidgets)
 endif()
 
-ki18n_wrap_ui(spectacle
+ki18n_wrap_ui(ectolens
     Gui/SettingsDialog/GeneralOptions.ui
     Gui/SettingsDialog/ImageSaveOptions.ui
     Gui/SettingsDialog/VideoSaveOptions.ui
 )
 
 # Needed to compile with Tesseract
-target_compile_options (spectacle PRIVATE -fexceptions)
+target_compile_options (ectolens PRIVATE -fexceptions)
 
-target_link_libraries(spectacle PRIVATE
+target_link_libraries(ectolens PRIVATE
     Qt::Concurrent
     Qt::DBus
     Qt::PrintSupport
@@ -125,70 +136,96 @@ target_link_libraries(spectacle PRIVATE
     K::KPipeWireRecord
     Wayland::Client
     LayerShellQt::Interface
-    KQuickImageEditor
+    EctolensImageEditor
+    EctolensImageEditorPlugin
     PkgConfig::TESSERACT
 )
 
 # qt_add_qml_module doesn't know how to deal with headers in subdirectories so
 # make sure to add those so the headers can be found.
-target_include_directories(spectacle PRIVATE
+target_include_directories(ectolens PRIVATE
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Gui>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Platforms>"
 )
 
-set_source_files_properties(Gui/QmlUtils.qml PROPERTIES
+set_source_files_properties(Gui/QmlUtils.qml Gui/EctoTheme.qml PROPERTIES
   QT_QML_SINGLETON_TYPE TRUE
 )
 
-qt_target_qml_sources(spectacle
+# Ectolens: Geist and Geist Mono ship inside the app (SIL Open Font License 1.1, src/fonts/README.md).
+qt_add_resources(ectolens "ectolens_fonts"
+    PREFIX "/"
+    FILES
+    fonts/Geist-Regular.ttf
+    fonts/Geist-Medium.ttf
+    fonts/Geist-SemiBold.ttf
+    fonts/GeistMono-Regular.ttf
+    fonts/GeistMono-Medium.ttf
+    fonts/OFL.txt
+)
+# Ectolens: the gear, drawn in Breeze's manner (Breeze has no plain gear; design/mock/icons/gear.svg).
+qt_add_resources(ectolens "ectolens_ui_icons"
+    PREFIX "/icons"
+    BASE Gui
+    FILES
+    Gui/ectolens-gear.svg
+)
+
+qt_target_qml_sources(ectolens
     QML_FILES
-    Gui/AcceptAction.qml
+    Gui/AfterCaptureMenu.qml
+    Gui/EctoDelay.qml
+    Gui/EctoSwatch.qml
+    Gui/EctoColorMenu.qml
+    Gui/EctoFontMenu.qml
+    Gui/EctoToolOptions.qml
+    Gui/EctoTools.qml
+    Gui/FrameHandles.qml
+    Gui/FrameLabel.qml
+    Gui/OverlayOptionsMenu.qml
+    Gui/RecordPanel.qml
+    Gui/SizeMenu.qml
+    Gui/EctoButton.qml
+    Gui/EctoCheck.qml
+    Gui/EctoChevron.qml
+    Gui/EctoKey.qml
+    Gui/EctoLabel.qml
+    Gui/EctoToolTip.qml
+    Gui/EctoMenu.qml
+    Gui/EctoMenuHeader.qml
+    Gui/EctoMenuItem.qml
+    Gui/EctoMenuRow.qml
+    Gui/EctoMenuSeparator.qml
+    Gui/EctoPick.qml
+    Gui/EctoRow.qml
+    Gui/EctoSegmented.qml
+    Gui/EctoSeparator.qml
+    Gui/EctoSlider.qml
+    Gui/EctoSplitButton.qml
+    Gui/EctoTheme.qml
+    Gui/PinView.qml
     Gui/AnimatedLoader.qml
     Gui/AnnotationEditor.qml
-    Gui/AnnotationOptionsToolBarContents.qml
-    Gui/AnnotationsToolBarContents.qml
-    Gui/ButtonGrid.qml
-    Gui/CancelAction.qml
-    Gui/CaptureModeButtonsColumn.qml
-    Gui/CaptureOptions.qml
     Gui/CaptureOverlay.qml
-    Gui/CaptureSettingsColumn.qml
-    Gui/CopyImageAction.qml
-    Gui/CopyLocationAction.qml
     Gui/DashedOutline.qml
-    Gui/DelaySpinBox.qml
-    Gui/DialogPage.qml
-    Gui/EditAction.qml
     Gui/EmptyPage.qml
-    Gui/ExportMenuButton.qml
     Gui/FloatingBackground.qml
     Gui/FloatingToolBar.qml
     Gui/Handle.qml
-    Gui/HelpMenuButton.qml
-    Gui/InlineMessageList.qml
     Gui/Magnifier.qml
-    Gui/NewScreenshotToolButton.qml
-    Gui/OcrAction.qml
-    Gui/OptionsMenuButton.qml
     Gui/Outline.qml
     Gui/QmlUtils.qml
-    Gui/RecordAction.qml
-    Gui/RecordingModeButtonsColumn.qml
-    Gui/RecordingModeMenuButton.qml
-    Gui/RecordingSettingsColumn.qml
     Gui/RecordingView.qml
-    Gui/RecordOptions.qml
-    Gui/SaveAction.qml
-    Gui/SaveAsAction.qml
-    Gui/ScreenshotModeMenuButton.qml
     Gui/ScreenshotView.qml
-    Gui/ShortcutsTextBox.qml
-    Gui/SizeLabel.qml
-    Gui/TextContextMenuConnection.qml
     Gui/TtToolButton.qml
-    Gui/UndoRedoGroup.qml
     Gui/ViewerPage.qml
 )
 
-install(TARGETS spectacle ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
+install(TARGETS ectolens ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
+
+# Ectolens: the MCP server AI agents start (ectolens-mcp); it asks Ectolens over D-Bus (AgentService)
+add_executable(ectolens-mcp mcp/EctolensMcp.cpp)
+target_compile_definitions(ectolens-mcp PRIVATE ECTOLENS_VERSION="${PROJECT_VERSION}")
+target_link_libraries(ectolens-mcp PRIVATE Qt::Core Qt::DBus)
+install(TARGETS ectolens-mcp ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
 install(FILES Gui/SettingsDialog/spectacle.kcfg DESTINATION ${KDE_INSTALL_KCFGDIR})

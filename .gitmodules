@@ -1,0 +1,4 @@
+[submodule "3rdparty/kpipewire"]
+	path = 3rdparty/kpipewire
+	url = https://github.com/Ectonomic/ectolens-kpipewire.git
+	branch = ectolens

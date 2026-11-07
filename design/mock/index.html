@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ectolens · one capture overlay · design proposal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;600;700&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+  /* ═══ THE DOCUMENT: its own identity, light paper, so the dark app frames read as
+        artifacts on a table. The accent is an orange (#FF4500),
+        darkened to #B83607 (a selection color) for text: 4.99:1 on the page. ═══ */
+  :root {
+    --page: #ECECF0;
+    --paper: #ffffff;
+    --ink: #15151a;
+    --ink-2: #55555f;
+    --ink-3: #666673;
+    --hair: #dcdce2;
+    --accent: #FF4500;
+    --accent-text: #B83607;
+    --doc-sans: "Geist", system-ui, sans-serif;
+    --doc-display: "Schibsted Grotesk", "Geist", sans-serif;
+    --doc-mono: "Geist Mono", ui-monospace, monospace;
+    --mono-lg: 500 11px/1.6 var(--doc-mono);
+    --mono-sm: 500 10px/1.6 var(--doc-mono);
+    --mono-data: 400 12px/1.5 var(--doc-mono);
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-font-smoothing: antialiased; }
+  body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--doc-sans); font-size: 15px; line-height: 1.6; }
+  .wrap { max-width: 1140px; margin: 0 auto; padding: 0 40px; }
+
+  /* cover */
+  .cover { background: #141618; color: #fff; padding: 0 0 60px; }
+  .cover .rule { height: 4px; background: var(--accent); }
+  .cover .wrap { padding-top: 64px; }
+  .eyebrow { font: var(--mono-lg); letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.62); margin: 0 0 22px; }
+  .cover h1 { font-family: var(--doc-display); font-size: 54px; font-weight: 700; letter-spacing: -.028em; line-height: 1.04; margin: 0 0 20px; max-width: 18ch; text-wrap: balance; }
+  .cover .deck { font-size: 18px; line-height: 1.55; color: rgba(255,255,255,.8); max-width: 64ch; margin: 0 0 34px; }
+  .cover .meta { display: flex; flex-wrap: wrap; gap: 8px 28px; font: var(--mono-data); color: rgba(255,255,255,.55); border-top: 1px solid rgba(255,255,255,.16); padding-top: 18px; }
+  .cover .meta b { color: rgba(255,255,255,.88); font-weight: 500; }
+
+  /* sections */
+  section { padding: 76px 0 0; }
+  section:last-of-type { padding-bottom: 96px; }
+  .sec-head { max-width: 70ch; margin: 0 0 30px; }
+  .kicker { font: var(--mono-lg); letter-spacing: .18em; text-transform: uppercase; color: var(--accent-text); display: block; margin-bottom: 12px; }
+  .sec-head h2 { font-family: var(--doc-display); font-size: 30px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; margin: 0 0 12px; text-wrap: balance; }
+  .sec-head p { margin: 0 0 10px; color: var(--ink-2); font-size: 16px; max-width: 64ch; }
+  .note { color: var(--ink-2); font-size: 14px; max-width: 72ch; margin: 18px 0 0; }
+  .note b { color: var(--ink); font-weight: 600; }
+  .label { display: flex; align-items: baseline; gap: 10px; font: var(--mono-lg); letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 10px; }
+  .label b { color: var(--ink); font-weight: 500; }
+
+  /* an app frame sitting on the page */
+  .artifact { border-radius: 10px; box-shadow: 0 1px 2px rgba(16,16,24,.06), 0 14px 36px -14px rgba(16,16,24,.35); }
+
+  /* proof: crops and numbers */
+  .pair { display: grid; grid-template-columns: 520px 520px; gap: 20px; }
+  .crop { margin: 0; }
+  .crop img { display: block; width: 520px; height: 300px; border-radius: 8px; image-rendering: pixelated; }
+  .crop figcaption { font-size: 14px; color: var(--ink-2); margin-top: 8px; }
+  .crop figcaption b { color: var(--ink); font-weight: 600; }
+  .rowgap { height: 26px; }
+  table.data { width: 100%; border-collapse: collapse; margin-top: 30px; background: var(--paper); border: 1px solid var(--hair); border-radius: 12px; overflow: hidden; }
+  table.data th, table.data td { text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--hair); font-size: 14px; vertical-align: top; }
+  table.data th { font: var(--mono-sm); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); background: #f7f7f9; }
+  table.data td.n { font: var(--mono-data); white-space: nowrap; }
+  table.data tr:last-child td { border-bottom: 0; }
+  table.data tr.today td { background: #fff5f1; }
+  table.data tr.pick td:first-child b::after { content: "default"; margin-left: 8px; font: var(--mono-sm); letter-spacing: .12em; text-transform: uppercase; color: var(--accent-text); }
+  table.data .sub { display: block; color: var(--ink-3); font-size: 13px; }
+
+  /* toolbar comparison strip */
+  .strip { background: #2a2d31; border-radius: 12px; padding: 26px 30px 30px; }
+  .cmp { display: grid; grid-template-columns: 1fr; gap: 10px; padding: 16px 0 18px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .cmp:last-child { border-bottom: 0; }
+  .cmp .t { color: #fff; font-size: 14px; font-weight: 600; line-height: 1.35; }
+  .cmp .t span { color: rgba(255,255,255,.62); font-weight: 400; font-size: 13px; margin-left: 10px; line-height: 1.45; }
+  .cmp .t.new { color: #ffb08f; }
+  .cmp .bar-host { position: relative; display: flex; }
+
+  /* anatomy */
+  .anat { position: relative; padding-left: 52px; }
+  .badge { position: absolute; width: 24px; height: 24px; border-radius: 999px; background: var(--accent-text); color: #fff; font: 500 11px/24px var(--doc-mono); text-align: center; }
+  .anat .badge { left: 0; }
+  .lead { position: absolute; height: 1px; background: var(--accent-text); opacity: .55; }
+  .legend { margin: 28px 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 36px; }
+  .legend div { display: grid; grid-template-columns: 24px 1fr; gap: 12px; align-items: start; }
+  .legend .k { width: 24px; height: 24px; border-radius: 999px; background: var(--accent-text); color: #fff; font: 500 11px/24px var(--doc-mono); text-align: center; }
+  .legend p { margin: 0; font-size: 14px; line-height: 1.55; color: var(--ink-2); }
+  .legend b { color: var(--ink); font-weight: 600; }
+  .detail { position: relative; margin-top: 34px; padding: 44px 30px 26px; background: #2a2d31; border-radius: 12px; display: flex; justify-content: center; }
+  .detail .badge { top: 12px; }
+
+  /* the moments */
+  .step { margin-bottom: 46px; }
+  .step-head { display: grid; grid-template-columns: 250px 1fr; gap: 32px; margin-bottom: 16px; align-items: start; }
+  .step-head .n { font: var(--mono-lg); letter-spacing: .18em; color: var(--accent-text); display: block; margin-bottom: 6px; }
+  .step-head h3 { font-family: var(--doc-display); font-size: 20px; font-weight: 600; letter-spacing: -.01em; margin: 0; line-height: 1.25; }
+  .step-head p { margin: 0; font-size: 15px; color: var(--ink-2); max-width: 66ch; }
+
+  /* edge cases */
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .card { background: var(--paper); border: 1px solid var(--hair); border-radius: 14px; padding: 20px 22px; }
+  .card h4 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+  .card p { margin: 0; font-size: 14px; color: var(--ink-2); line-height: 1.55; }
+  .card .vis { margin: 14px -6px 2px; background: #2a2d31; border-radius: 10px; padding: 16px; display: flex; justify-content: center; }
+
+  /* build notes */
+  ol.plan { margin: 0; padding-left: 22px; max-width: 76ch; }
+  ol.plan li { margin-bottom: 12px; color: var(--ink-2); }
+  ol.plan li b { color: var(--ink); }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 30px; }
+  .box { background: var(--paper); border: 1px solid var(--hair); border-radius: 14px; padding: 20px 24px; }
+  .box h4 { margin: 0 0 10px; font: var(--mono-lg); letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); }
+  .box ul { margin: 0; padding-left: 18px; }
+  .box li { font-size: 14px; color: var(--ink-2); margin-bottom: 8px; line-height: 1.5; }
+  .refs { margin: 0; padding: 0; list-style: none; max-width: 80ch; }
+  .refs li { font-size: 14px; color: var(--ink-2); padding: 10px 0; border-bottom: 1px solid var(--hair); }
+  .refs li b { color: var(--ink); font-weight: 600; }
+  .refs a { color: var(--accent-text); }
+
+  /* ═══ THE APP: Spectacle's overlay in the Breeze Dark scheme (kdeglobals),
+        Noto Sans 10 pt, real Breeze icons. Values from the QML: FloatingToolBar
+        padding and spacing = Kirigami mediumSpacing (6), radius 4, window color at
+        95%, border = text at 20%, shadow 0.2 black, size 9, y 2. ═══ */
+  .app {
+    --win: #202326; --view: #141618; --btn: #292C30; --text: #FCFCFC; --text-2: #A1A9B1;
+    --hl: #B83607; --focus: #FF4500; --neg: #DA4453; --neutral: #F67400; --pos: #27AE60;
+    font: 400 13.333px/1.3 "Noto Sans", sans-serif; color: var(--text);
+  }
+  .app .i { width: 16px; height: 16px; display: block; flex: none; }
+  .screen { position: relative; width: 1060px; height: 600px; overflow: hidden; border-radius: 10px;
+    background: #111 url(img/wallpaper.jpg) -1190px -700px / 3440px 1440px no-repeat; }
+  .screen.small { width: 1060px; height: 260px; background-position: -2380px -1180px; }
+
+  /* windows on the desktop */
+  .w { position: absolute; border-radius: 6px 6px 0 0; overflow: hidden; background: var(--win);
+       box-shadow: 0 0 0 1px rgba(0,0,0,.45), 0 14px 38px rgba(0,0,0,.5); }
+  .w .tbar { height: 30px; background: rgb(39,44,49); display: flex; align-items: center; justify-content: center; color: var(--text); font-size: 13.333px; position: relative; }
+  .w .tbar .ctl { position: absolute; right: 8px; top: 7px; display: flex; gap: 8px; }
+  .w .tbar .ctl i { width: 16px; height: 16px; border-radius: 999px; background: rgba(252,252,252,.14); display: block; }
+  .w .tbar .ctl i:last-child { background: rgba(252,252,252,.24); }
+  .w.inactive .tbar { background: rgb(32,36,40); color: var(--text-2); }
+  .w img.content { display: block; }
+  .konsole .term { background: #232627; height: calc(100% - 30px); padding: 8px 10px; font: 400 13.333px/1.45 "Noto Sans Mono", monospace; color: #fcfcfc; white-space: pre; }
+  .konsole .term .p { color: #1cdc9a; }
+  .konsole .term .hit { color: #fdbc4b; }
+
+  /* the overlay */
+  .veil { position: absolute; inset: 0; background: rgba(0,0,0,.25); }
+  .sel { position: absolute; outline: 1px solid var(--hl); box-shadow: 0 0 0 4000px rgba(0,0,0,.5); }
+  .sel.hover { outline: 2px solid var(--focus); outline-offset: -1px; box-shadow: 0 0 0 4000px rgba(0,0,0,.25); }
+  .h { position: absolute; width: 18px; height: 18px; border-radius: 999px; background: var(--hl); box-shadow: 0 0 0 1px rgba(255,255,255,.0); }
+  .h.tl { left: -9px; top: -9px; clip-path: polygon(0 0,100% 0,100% 50%,50% 50%,50% 100%,0 100%); }
+  .h.tr { right: -9px; top: -9px; clip-path: polygon(0 0,100% 0,100% 100%,50% 100%,50% 50%,0 50%); }
+  .h.bl { left: -9px; bottom: -9px; clip-path: polygon(0 0,50% 0,50% 50%,100% 50%,100% 100%,0 100%); }
+  .h.br { right: -9px; bottom: -9px; clip-path: polygon(50% 0,100% 0,100% 100%,0 100%,0 50%,50% 50%); }
+  .h.t { left: calc(50% - 9px); top: -9px; clip-path: inset(0 0 50% 0); }
+  .h.b { left: calc(50% - 9px); bottom: -9px; clip-path: inset(50% 0 0 0); }
+  .h.l { left: -9px; top: calc(50% - 9px); clip-path: inset(0 50% 0 0); }
+  .h.r { right: -9px; top: calc(50% - 9px); clip-path: inset(0 0 0 50%); }
+  .recframe { position: absolute; border: 1px solid var(--view); }
+  .recframe::after { content: ""; position: absolute; inset: -1px; border: 1px dashed var(--hl); }
+
+  /* floating toolbars (FloatingToolBar.qml) */
+  .ftb { position: absolute; display: inline-flex; align-items: center; gap: 6px; padding: 6px;
+         background: rgba(32,35,38,.95); border: 1px solid rgba(252,252,252,.2); border-radius: 4px;
+         box-shadow: 0 2px 9px rgba(0,0,0,.2); white-space: nowrap; }
+  .ftb.static { position: relative; }
+  .center-x { left: 530px; transform: translateX(-50%); }
+  .tbtn { height: 30px; min-width: 30px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 0 6px; border-radius: 3px; border: 1px solid transparent; color: var(--text); }
+  .tbtn.io { padding: 0; width: 30px; }
+  .tbtn.on { background: rgba(255,69,0,.16); border-color: rgba(255,69,0,.55); }
+  .tbtn.down { background: rgba(255,69,0,.28); border-color: var(--focus); }
+  .tbtn .dd { width: 10px; height: 10px; opacity: .8; margin-left: -1px; }
+  .tsep { width: 1px; height: 30px; background: rgba(252,252,252,.2); margin: 0 1px; }
+  .tsize { height: 30px; display: inline-flex; align-items: center; gap: 6px; padding: 0 9px; font-variant-numeric: tabular-nums; }
+  .split { display: inline-flex; border-radius: 3px; }
+  .split .tbtn.arrow { width: 22px; min-width: 22px; padding: 0; margin-left: -6px; }
+  .split .tbtn.arrow img { width: 10px; height: 10px; }
+  .timer { height: 30px; display: inline-flex; align-items: center; gap: 7px; padding: 0 9px 0 7px; font-variant-numeric: tabular-nums; }
+  .timer .dot { width: 10px; height: 10px; border-radius: 999px; background: var(--neg); }
+  .timer.warn { color: var(--neutral); }
+  .timer.paused .dot { background: none; width: 10px; height: 10px; border-left: 3px solid var(--text-2); border-right: 3px solid var(--text-2); border-radius: 0; }
+
+  /* chip that names what a click will take */
+  .chip { position: absolute; display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 9px; background: rgba(32,35,38,.95); border: 1px solid rgba(252,252,252,.2); border-radius: 4px; box-shadow: 0 2px 9px rgba(0,0,0,.2); font-variant-numeric: tabular-nums; }
+
+  /* menus (QMenu, Breeze Dark) */
+  .menu { position: absolute; min-width: 250px; background: #202326; border: 1px solid rgba(252,252,252,.14); border-radius: 5px; padding: 4px 0; box-shadow: 0 8px 26px rgba(0,0,0,.55); }
+  .mi { height: 28px; display: grid; grid-template-columns: 20px 1fr auto 14px; align-items: center; gap: 8px; padding: 0 8px 0 10px; margin: 0 4px; border-radius: 3px; border: 1px solid transparent; white-space: nowrap; }
+  .mi .hint { color: var(--text-2); }
+  .mi.active { background: rgba(255,69,0,.18); border-color: rgba(255,69,0,.55); }
+  .mi .sub { width: 10px; height: 10px; transform: rotate(-90deg); opacity: .85; }
+  .msep { height: 1px; background: rgba(252,252,252,.12); margin: 4px 0; }
+  .cb { width: 16px; height: 16px; border-radius: 3px; border: 1px solid rgba(252,252,252,.45); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .cb.on { border-color: var(--focus); background: rgba(255,69,0,.22); }
+  .cb.on::after { content: ""; width: 8px; height: 4px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: translateY(-1px) rotate(-45deg); }
+  .rb { width: 16px; height: 16px; border-radius: 999px; border: 1px solid rgba(252,252,252,.45); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .rb.on { border-color: var(--focus); }
+  .rb.on::after { content: ""; width: 8px; height: 8px; border-radius: 999px; background: var(--focus); }
+
+  /* cursors */
+  .cursor { position: absolute; pointer-events: none; }
+
+  /* plasma notification */
+  .notif { position: absolute; right: 16px; bottom: 16px; width: 400px; background: rgba(32,35,38,.97); border: 1px solid rgba(252,252,252,.14); border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,.5); padding: 10px 12px 12px; }
+  .notif .hd { display: flex; align-items: center; gap: 7px; color: var(--text-2); font-size: 12px; margin-bottom: 6px; }
+  .notif .hd .x { margin-left: auto; opacity: .7; }
+  .notif .body { display: grid; grid-template-columns: 1fr 112px; gap: 12px; }
+  .notif .ttl { font-weight: 600; margin-bottom: 3px; }
+  .notif .txt { color: var(--text); opacity: .9; line-height: 1.4; }
+  .notif .thumb { width: 112px; height: 70px; border-radius: 4px; background: url(img/code-window.png) 0 0 / 112px 70px; box-shadow: 0 0 0 1px rgba(252,252,252,.15); position: relative; }
+  .notif .thumb::after { content: ""; position: absolute; left: 44px; top: 23px; border-left: 16px solid rgba(255,255,255,.9); border-top: 11px solid transparent; border-bottom: 11px solid transparent; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
+  .notif .acts { display: flex; justify-content: flex-end; gap: 6px; margin-top: 10px; }
+  .pbtn { height: 30px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border-radius: 3px; background: var(--btn); border: 1px solid rgba(252,252,252,.18); }
+
+  /* settings dialog (KPageDialog, QWidget, Breeze Dark) */
+  .dlg { width: 1060px; border-radius: 8px 8px 6px 6px; overflow: hidden; background: var(--win); box-shadow: 0 0 0 1px rgba(0,0,0,.5); }
+  .dlg .tbar { height: 32px; background: rgb(39,44,49); display: flex; align-items: center; justify-content: center; position: relative; }
+  .dlg .tbar .ctl { position: absolute; right: 10px; top: 8px; display: flex; gap: 8px; }
+  .dlg .tbar .ctl i { width: 16px; height: 16px; border-radius: 999px; background: rgba(252,252,252,.14); display: block; }
+  .dlg .main { display: grid; grid-template-columns: 200px 1fr; }
+  .dlg .side { background: var(--view); border-right: 1px solid rgba(252,252,252,.1); padding: 8px; }
+  .dlg .side .pg { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 10px; border-radius: 3px; }
+  .dlg .side .pg img { width: 22px; height: 22px; }
+  .dlg .side .pg.on { background: rgba(255,69,0,.2); border: 1px solid rgba(255,69,0,.55); }
+  .dlg .page { padding: 18px 26px 22px; }
+  .dlg .page h5 { font-size: 16px; font-weight: 600; margin: 0 0 14px; }
+  .imsg { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 4px; background: rgba(255,69,0,.10); border: 1px solid rgba(255,69,0,.5); margin-bottom: 8px; line-height: 1.45; }
+  .imsg img { width: 22px; height: 22px; }
+  .form { display: grid; grid-template-columns: 300px 1fr; column-gap: 10px; row-gap: 9px; align-items: center; }
+  .form .lab { text-align: right; }
+  .form .lab.top { align-self: start; padding-top: 6px; }
+  .form .sec { grid-column: 1 / -1; text-align: center; font-weight: 600; font-size: 14px; margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(252,252,252,.1); }
+  .form .ctlrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .form .hintline { color: var(--text-2); font-size: 12.5px; }
+  .opts { display: grid; gap: 8px; }
+  .opt { display: grid; grid-template-columns: 16px 1fr; gap: 9px; align-items: start; }
+  .opt .rb, .opt .cb { margin-top: 1px; }
+  .opt .d { color: var(--text-2); font-size: 12.5px; line-height: 1.4; }
+  .combo { height: 30px; display: inline-flex; align-items: center; gap: 10px; padding: 0 8px 0 10px; border-radius: 3px; background: var(--btn); border: 1px solid rgba(252,252,252,.2); min-width: 120px; justify-content: space-between; }
+  .combo img { width: 10px; height: 10px; opacity: .85; }
+  .spin { height: 30px; display: inline-flex; align-items: center; border-radius: 3px; background: var(--view); border: 1px solid rgba(252,252,252,.2); overflow: hidden; }
+  .spin span { padding: 0 10px; min-width: 44px; font-variant-numeric: tabular-nums; }
+  .spin i { display: flex; flex-direction: column; border-left: 1px solid rgba(252,252,252,.15); height: 100%; justify-content: center; padding: 0 5px; gap: 2px; font-style: normal; font-size: 8px; line-height: 9px; color: var(--text-2); }
+  .edit { height: 30px; display: inline-flex; align-items: center; padding: 0 10px; border-radius: 3px; background: var(--view); border: 1px solid rgba(252,252,252,.2); min-width: 340px; }
+  .edit.ph { color: rgba(252,252,252,.42); }
+  .slider { display: inline-flex; align-items: center; gap: 10px; }
+  .slider .track { position: relative; width: 240px; height: 6px; border-radius: 3px; background: rgba(252,252,252,.18); }
+  .slider .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--focus); }
+  .slider .knob { position: absolute; top: -6px; width: 18px; height: 18px; border-radius: 999px; background: #e8e8e8; border: 1px solid rgba(0,0,0,.35); }
+  .slider .end { color: var(--text-2); font-size: 12.5px; }
+  .dlg .foot { display: flex; align-items: center; gap: 6px; padding: 10px 14px; border-top: 1px solid rgba(252,252,252,.1); background: var(--win); }
+  .dlg .foot .sp { flex: 1; }
+</style>
+</head>
+<body>
+<script src="app-match.js"></script>
+
+<header class="cover">
+  <div class="rule"></div>
+  <div class="wrap">
+    <p class="eyebrow">Ectolens · Design proposal · November 1, 2026</p>
+    <h1>Frame it once. Then take a picture or a video.</h1>
+    <p class="deck">Print Screen opens one overlay for both. You frame a region, a window or a whole screen, then choose Copy, Save or Record. Recordings come out sharp, and every encoder setting is yours to change.</p>
+    <div class="meta">
+      <span><b>Built on</b> Spectacle and KPipeWire from KDE</span>
+      <span><b>Measured on</b> your Ryzen 9 9950X3D</span>
+      <span><b>References</b> Snagit, GNOME Shell, macOS, OBS Studio 32.2</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ═════════ 01 MEASURED ═════════ -->
+<section id="measured">
+  <div class="sec-head">
+    <span class="kicker">01 · Measured on your computer</span>
+    <h2>Recordings look bad because of one setting you can't reach</h2>
+    <p>Spectacle hands recording to KDE's KPipeWire library, which encodes at quality level 35 on a scale where lower numbers are sharper. FFmpeg's own guide calls 17 to 28 the sensible range. Spectacle has no setting for it, so every recording gets 35. Your file from today was encoded exactly that way.</p>
+    <p>Below is one test clip encoded both ways on your processor: Spectacle's settings, and the High quality proposed as Ectolens's default.</p>
+  </div>
+
+  <div class="pair">
+    <figure class="crop"><img src="img/q-scroll-today.png" alt=""><figcaption><b>Spectacle today</b>, mid-scroll. Line numbers ghost and the text smears.</figcaption></figure>
+    <figure class="crop"><img src="img/q-scroll-high.png" alt=""><figcaption><b>Ectolens High</b>, the same frame. Text stays sharp while it moves.</figcaption></figure>
+  </div>
+  <div class="rowgap"></div>
+  <div class="pair">
+    <figure class="crop"><img src="img/q-still-today.png" alt=""><figcaption><b>Spectacle today</b>, a still moment. The formula chip turns to noise and the dark background breaks into bands.</figcaption></figure>
+    <figure class="crop"><img src="img/q-still-high.png" alt=""><figcaption><b>Ectolens High.</b> The chip reads “=SUM(B2:B13)” and the background stays smooth.</figcaption></figure>
+  </div>
+
+  <table class="data">
+    <thead><tr><th>Setting</th><th>Size per minute</th><th>Encoding speed</th><th>Picture difference</th></tr></thead>
+    <tbody>
+      <tr class="today"><td><b>Spectacle today</b><span class="sub">x264, quality 35, very fast, no B-frames</span></td><td class="n">4.8 MB</td><td class="n">3.4× real time</td><td class="n">2.47%</td></tr>
+      <tr><td><b>Small file</b><span class="sub">x264, quality 23, very fast</span></td><td class="n">10.1 MB</td><td class="n">3.5× real time</td><td class="n">1.15%</td></tr>
+      <tr class="pick"><td><b>High</b><span class="sub">x264, quality 16, very fast</span></td><td class="n">26.6 MB</td><td class="n">3.3× real time</td><td class="n">1.00%</td></tr>
+      <tr><td><b>Best</b><span class="sub">x264, quality 12, very fast, full color detail (4:4:4)</span></td><td class="n">27.9 MB</td><td class="n">2.4× real time</td><td class="n">0.38%</td></tr>
+      <tr><td><b>High at 120 frames per second</b></td><td class="n">42.0 MB</td><td class="n">1.8× real time</td><td class="n">1.03%</td></tr>
+      <tr><td><b>High at 240 frames per second</b><span class="sub">Falls just short of real time on the processor at full screen.</span></td><td class="n">49.5 MB</td><td class="n">0.96× real time</td><td class="n">1.03%</td></tr>
+    </tbody>
+  </table>
+  <p class="note"><b>How this was measured.</b> The test clip puts ectonomic.com and KDE's code browser side by side on a 3440×1440 screen at 60 frames per second: still for 4 seconds, scrolling for 4, still for 2. Each setting was encoded with FFmpeg 8.1.3 at the lowest CPU priority while other work was running, so the speeds are floors. Picture difference is 1 minus SSIM, measured in full color against the original frames; lower is better.</p>
+  <p class="note"><b>Why Best exists.</b> Even a lossless file in the standard color format differs by 0.63%, because that format stores color at half resolution. High comes within 0.37 points of that floor. Best keeps full color detail, which is why it beats every standard file at about the same size. The cost is compatibility: Firefox and some phones can't play it.</p>
+</section>
+
+<!-- ═════════ 02 WHAT CHANGES ═════════ -->
+<section id="changes">
+  <div class="sec-head">
+    <span class="kicker">02 · What changes</span>
+    <h2>Record moves onto the toolbar you already use</h2>
+    <p>Today the picture overlay and the recording overlay are two different places, and you pick one before you draw anything. Ectolens keeps one overlay. You frame first, then decide what to make of it. These are the toolbars at their real size.</p>
+  </div>
+  <div class="strip app">
+    <div class="cmp"><div class="t">Spectacle today, after Print Screen<span>No way to record from here.</span></div><div class="bar-host" data-bar="today-pic"></div></div>
+    <div class="cmp"><div class="t">Spectacle today, after New Recording › Region<span>A second overlay on the live screen, with no annotation tools. Video was chosen before you drew.</span></div><div class="bar-host" data-bar="today-vid"></div></div>
+    <div class="cmp"><div class="t new">Ectolens, after Print Screen<span>One toolbar. Record gets its own group at the end.</span></div><div class="bar-host" data-bar="lens"></div></div>
+    <div class="cmp"><div class="t">The bottom toolbar today<span>Modes you had to choose before you started.</span></div><div class="bar-host" data-bar="today-main"></div></div>
+    <div class="cmp"><div class="t new">The bottom toolbar in Ectolens<span>The frame now picks the region, window or screen, so the mode menus go.</span></div><div class="bar-host" data-bar="lens-main"></div></div>
+  </div>
+</section>
+
+<!-- ═════════ 03 ANATOMY ═════════ -->
+<section id="anatomy">
+  <div class="sec-head">
+    <span class="kicker">03 · Anatomy</span>
+    <h2>One overlay, both outcomes</h2>
+    <p>A window has been framed by clicking it. Everything except Record and the window mark in the size label is Spectacle as it is today.</p>
+  </div>
+  <div class="anat app" id="anat">
+    <div class="screen win artifact" data-scene="framed"></div>
+  </div>
+  <div class="detail app" id="detail">
+    <div class="ftb static" data-bar="lens-detail"></div>
+  </div>
+  <div class="legend">
+    <div><span class="k">1</span><p><b>Annotation tools.</b> Unchanged. Marks you draw before pressing Record stay on screen and are recorded too.</p></div>
+    <div><span class="k">4</span><p><b>Size.</b> The size of the file you will get. The window mark means the frame is a window, so a recording follows that window if it moves.</p></div>
+    <div><span class="k">2</span><p><b>The frame.</b> Drag for any area, or click a window to take it whole. Over the desktop, a click takes that whole screen. The handles adjust it either way.</p></div>
+    <div><span class="k">5</span><p><b>Picture actions.</b> Accept, Cancel, Save, Save As, Copy, Extract Text and Export work exactly as they do today.</p></div>
+    <div><span class="k">3</span><p><b>The toolbar.</b> Under the frame, where it is today, so nothing moves for pictures.</p></div>
+    <div><span class="k">6</span><p><b>Record.</b> Records the same frame. The arrow beside it holds what goes into a recording: sound, the pointer, quality, frame rate and format. The R key does the same.</p></div>
+  </div>
+</section>
+
+<!-- ═════════ 04 THE MOMENTS ═════════ -->
+<section id="moments">
+  <div class="sec-head">
+    <span class="kicker">04 · Step by step</span>
+    <h2>From Print Screen to a saved video</h2>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><div><span class="n">1</span><h3>Press Print Screen and point</h3></div><p>The screen freezes under a light veil, as it does today. Point at a window and it lights up, with its size beside it; click to take it whole. Drag anywhere for your own area instead.</p></div>
+    <div class="app"><div class="screen win artifact" data-scene="hover"></div></div>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><div><span class="n">2</span><h3>Choose what goes in, if you want to</h3></div><p>The arrow beside Record opens the recording choices. They stay as you leave them, so most days you skip this and press Record.</p></div>
+    <div class="app"><div class="screen win artifact" data-scene="menu"></div></div>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><div><span class="n">3</span><h3>Record</h3></div><p>The frozen picture fades into the live screen and recording starts. The veil lifts so you can work. A dashed line marks the frame, and Record becomes Stop in the same spot, with the time, Pause and the microphone switch beside it. Press Stop, or Print Screen again, to finish.</p></div>
+    <div class="app"><div class="screen win artifact" data-scene="recording"></div></div>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><div><span class="n">4</span><h3>Done</h3></div><p>The video saves to Videos/Screencasts, and the notification Spectacle shows today appears; clicking it opens the video. Nothing new to learn after recording.</p></div>
+    <div class="app"><div class="screen small win artifact" data-scene="done"></div></div>
+  </div>
+</section>
+
+<!-- ═════════ 05 SETTINGS ═════════ -->
+<section id="settings">
+  <div class="sec-head">
+    <span class="kicker">05 · Recording settings</span>
+    <h2>Every encoder setting, explained where you change it</h2>
+    <p>Settings › Recording replaces today's Video Saving page. It opens with what your recordings are right now, in numbers measured on this computer. The three quality choices are starting points: change anything under Encoder and Quality becomes Custom. An encoder is listed only if it actually opens on this computer.</p>
+  </div>
+  <div class="app"><div class="dlg win artifact" id="dlg"></div></div>
+</section>
+
+<!-- ═════════ 06 EDGE CASES ═════════ -->
+<section id="edges">
+  <div class="sec-head">
+    <span class="kicker">06 · Edge cases</span>
+    <h2>When a recording doesn't go to plan</h2>
+  </div>
+  <div class="cards">
+    <div class="card"><h4>The computer can't keep up</h4><p>If frames start dropping, the time turns orange and counts them, so a bad recording is never a surprise. Check Again in settings warns you ahead of time: on this computer, 240 frames per second at full screen falls just short on the processor.</p><div class="vis app" data-bar="dropped"></div></div>
+    <div class="card"><h4>Pausing</h4><p>Pause stops the clock, and the paused stretch is left out of the file, the way OBS does it. The same button resumes.</p><div class="vis app" data-bar="paused"></div></div>
+    <div class="card"><h4>Recording a whole screen</h4><p>The controls would end up in the video, so they move to your other screen. With only one screen they hide, and Stop is in the system tray and on Print Screen.</p></div>
+    <div class="card"><h4>A crash in the middle</h4><p>The file is written in pieces while it records, then tidied into a normal MP4 when you stop. If anything crashes, what was recorded still plays. This is how OBS's Hybrid MP4 works.</p></div>
+    <div class="card"><h4>The window moves or closes</h4><p>A window recording follows the window around the screen. If the window closes, recording stops and keeps what it captured. A drawn area stays where you drew it.</p></div>
+    <div class="card"><h4>Pressing Record twice by accident</h4><p>Stop ignores clicks for the first half second, so a double click can't end the recording the moment it starts.</p></div>
+    <div class="card"><h4>Marks drawn before Record</h4><p>They stay on screen and appear in the video, because the video shows what you see. Undo removes them first if you don't want them.</p></div>
+    <div class="card"><h4>GIF and WebP</h4><p>These formats can't hold sound, so the sound choices say so, using Spectacle's own line: “The selected video format does not support audio.”</p></div>
+  </div>
+</section>
+
+<!-- ═════════ 07 BUILD ═════════ -->
+<section id="build">
+  <div class="sec-head">
+    <span class="kicker">07 · Building it</span>
+    <h2>What gets built, in order</h2>
+  </div>
+  <ol class="plan">
+    <li><b>Fork from KDE's current master, not the 6.7.5 release.</b> Spectacle's master already records system audio and the microphone; 6.7.5 doesn't. KPipeWire is built as Ectolens's own private copy, so Plasma's copy, which draws window thumbnails and runs screen sharing, is never touched.</li>
+    <li><b>The recording engine.</b> Quality choices and every encoder setting, frame rates up to the screen's own, crash-safe files, Pause, separate sound tracks, the dropped-frame count and correct color tags. Encoders are found by trying to open each one, so NVENC appears on NVIDIA computers and nowhere else.</li>
+    <li><b>The overlay.</b> Record on the toolbar, the fade from frozen to live, the recording toolbar, and picking a window or screen by pointing.</li>
+    <li><b>Settings › Recording,</b> with the measured status line and Check Again.</li>
+  </ol>
+  <div class="cols">
+    <div class="box"><h4>Checks that run without me</h4><ul>
+      <li>An encoder test runs every encoder this computer has on a made-up recording, then again with the graphics card hidden, to prove the processor path never needs NVIDIA.</li>
+      <li>A crash test kills Ectolens mid-recording and checks that the file still plays.</li>
+      <li>A stranger check runs Ectolens from outside the source folder with a fresh config and none of your files.</li>
+      <li>Each check is shown to fail once with a planted fault before its pass counts.</li>
+    </ul></div>
+    <div class="box"><h4>Unproven, and put off</h4><ul>
+      <li><b>Unproven:</b> picking a window by pointing needs KWin to tell Ectolens where each window is. It is the riskiest part, so it gets proved before the overlay work starts.</li>
+      <li><b>Unproven:</b> marks drawn before Record showing up in the video depends on KWin including the overlay in the recording.</li>
+      <li>Put off: HDR and 10-bit recording, trimming after a recording, an instant replay that saves the last 30 seconds, and a webcam bubble.</li>
+      <li>Put off: NVENC AV1, which didn't open on this computer when tested.</li>
+    </ul></div>
+  </div>
+
+  <div class="sec-head" style="margin-top:60px">
+    <span class="kicker">Where each idea came from</span>
+  </div>
+  <ul class="refs">
+    <li><b>Snagit All-in-One capture:</b> frame first, then choose a picture or a video from the toolbar. <a href="https://www.techsmith.com/learn/tutorials/snagit/how-to-capture-your-screen/">TechSmith</a></li>
+    <li><b>GNOME Shell's capture overlay:</b> when you switch to video, the frozen picture fades out in 200 ms and your selection stays. <a href="https://gitlab.gnome.org/GNOME/gnome-shell/-/blob/main/js/ui/screenshot.js">screenshot.js</a></li>
+    <li><b>macOS Screenshot toolbar:</b> picture and video on one toolbar, with microphone and pointer choices in one menu. <a href="https://support.apple.com/en-us/102618">Apple</a></li>
+    <li><b>Windows Snipping Tool:</b> Pause on the recording toolbar. <a href="https://www.microsoft.com/windows/learning-center/how-to-use-snipping-tool-on-windows-screenshots-shortcuts-and-screen-recordings">Microsoft</a></li>
+    <li><b>OBS Studio 32.2:</b> quality 23 and 16 at very fast for its two quality choices, Hybrid MP4 for crash-safe files, and pause that leaves the gap out. <a href="https://github.com/obsproject/obs-studio/blob/32.2.2/frontend/utility/SimpleOutput.cpp">SimpleOutput.cpp</a>, <a href="https://obsproject.com/kb/hybrid-mp4">Hybrid MP4</a></li>
+    <li><b>FFmpeg's H.264 guide:</b> 17 to 28 is the sensible quality range. <a href="https://trac.ffmpeg.org/wiki/Encode/H.264">FFmpeg wiki</a></li>
+    <li><b>KDE's own open requests:</b> a quality setting (Spectacle !538, !585), a frame-rate setting (!358) and NVENC through VA-API (KPipeWire !257). <a href="https://invent.kde.org/plasma/spectacle/-/merge_requests/585">invent.kde.org</a></li>
+  </ul>
+</section>
+</main>
+
+<script>
+/* ── parts, built once and reused by every frame ── */
+const I = (n, cls = 'i') => `<img class="${cls}" src="icons/${n}.svg" alt="">`;
+const dd = `<img class="dd" src="icons/arrow-down.svg" alt="">`;
+const B = (icon, text, cls = '') => `<span class="tbtn ${cls}">${icon ? I(icon) : ''}${text ? `<span>${text}</span>` : ''}</span>`;
+const IO = (icon, cls = '') => `<span class="tbtn io ${cls}">${I(icon)}</span>`;
+const SEP = `<span class="tsep"></span>`;
+const SIZE = (txt, win) => `<span class="tsize">${win ? I('window') : ''}${txt}</span>`;
+const PICTURE = B('dialog-ok', 'Accept') + B('dialog-cancel', 'Cancel') + B('document-save', 'Save') + B('document-save-as', 'Save As…') + B('edit-copy', 'Copy') + B('document-scan', 'Extract Text') + `<span class="tbtn">${I('document-share')}<span>Export</span>${dd}</span>`;
+const RECORD = (down) => `<span class="split rec">${B('media-record', 'Record')}<span class="tbtn arrow ${down ? 'down' : ''}">${I('arrow-down')}</span></span>`;
+const BARS = {
+  'today-pic': `<div class="ftb static">${SIZE('720×450')}${PICTURE}</div>`,
+  'today-vid': `<div class="ftb static">${SIZE('720×450')}${B('media-record', 'Record')}${B('dialog-cancel', 'Cancel')}</div>`,
+  'lens': `<div class="ftb static">${SIZE('720×450', true)}${PICTURE}${SEP}${RECORD(false)}</div>`,
+  'today-main': `<div class="ftb static"><span class="tbtn">${I('camera-photo')}<span>New Screenshot</span></span><span class="tbtn">${I('camera-video')}<span>New Recording</span></span><span class="tbtn">${I('configure')}<span>Options</span></span></div>`,
+  'lens-main': `<div class="ftb static"><span class="tbtn">${I('configure')}<span>Options</span></span></div>`,
+  'dropped': `<div class="ftb static"><span class="timer warn"><span class="dot"></span>1:12 · 34 frames dropped</span>${IO('media-playback-pause')}${IO('mic-on', 'on')}${B('media-playback-stop', 'Stop')}</div>`,
+  'paused': `<div class="ftb static"><span class="timer paused"><span class="dot"></span>Paused at 0:42</span>${IO('media-playback-start')}${IO('mic-on', 'on')}${B('media-playback-stop', 'Stop')}</div>`,
+};
+document.querySelectorAll('[data-bar]').forEach(el => {
+  const k = el.dataset.bar;
+  if (k === 'lens-detail') { el.innerHTML = `${SIZE('720×450', true)}${PICTURE}${SEP}${RECORD(false)}`; return; }
+  el.innerHTML = BARS[k];
+});
+
+const ANNOT = ['transform-browse:down','transform-crop','edit-select','draw-freehand','draw-highlight','draw-line','draw-arrow','draw-rectangle','draw-ellipse','pixelate','blur','draw-text','draw-number']
+  .map(s => { const [n, st] = s.split(':'); return IO(n, st || ''); }).join('') + SEP + IO('edit-undo') + IO('edit-redo');
+
+const CROSS = `<svg class="cursor" width="23" height="23" viewBox="0 0 23 23"><path d="M11.5 1v8M11.5 14v8M1 11.5h8M14 11.5h8" stroke="#000" stroke-width="3"/><path d="M11.5 1v8M11.5 14v8M1 11.5h8M14 11.5h8" stroke="#fff" stroke-width="1"/></svg>`;
+const ARROW = `<svg class="cursor" width="20" height="26" viewBox="0 0 20 26"><path d="M2 2 L2 21 L7 16.5 L10.5 24 L13.5 22.6 L10 15.2 L17 15.2 Z" fill="#232627" stroke="#fcfcfc" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
+
+const KONSOLE = `<div class="w konsole inactive" style="left:600px;top:150px;width:440px;height:300px"><div class="tbar">~ : bash — Konsole<span class="ctl"><i></i><i></i><i></i></span></div><div class="term"><span class="p">$</span> ffprobe -v error -show_entries stream=codec_name,width
+  Screencast_20261101_123936.mp4
+codec_name=h264
+width=492
+<span class="p">$</span> strings Screencast_20261101_123936.mp4 | grep -o crf=.*
+<span class="hit">crf=35.0</span>
+<span class="p">$</span> █</div></div>`;
+const BROWSER = (img = 'code-window.png', inactive = false) => `<div class="w ${inactive ? 'inactive' : ''}" style="left:170px;top:70px;width:720px;height:450px"><div class="tbar">CaptureOverlay.qml · plasma/spectacle · KDE GitLab<span class="ctl"><i></i><i></i><i></i></span></div><img class="content" src="img/${img}" width="720" height="420" alt=""></div>`;
+const HANDLES = ['tl','t','tr','l','r','bl','b','br'].map(c => `<span class="h ${c}"></span>`).join('');
+const FINAL = (down) => `<div class="ftb fin center-x" style="top:535px">${SIZE('720×450', true)}${PICTURE}${SEP}${RECORD(down)}</div>`;
+const ANNOTBAR = `<div class="ftb center-x" style="top:13px">${ANNOT}</div>`;
+
+const SCENES = {
+  hover: () => `${KONSOLE}${BROWSER()}<div class="sel hover" style="left:170px;top:70px;width:720px;height:450px"></div>
+    <div class="chip" style="left:170px;top:36px">${I('window')}720×450</div>
+    <div style="position:absolute;left:452px;top:288px">${CROSS}</div>`,
+  framed: () => `${KONSOLE}${BROWSER()}<div class="sel" style="left:170px;top:70px;width:720px;height:450px">${HANDLES}</div>${ANNOTBAR}${FINAL(false)}`,
+  menu: () => `${KONSOLE}${BROWSER()}<div class="sel" style="left:170px;top:70px;width:720px;height:450px">${HANDLES}</div>${ANNOTBAR}${FINAL(true)}
+    <div class="menu" id="recmenu">
+      <div class="mi"><span class="cb on"></span><span>Record system audio</span><span></span><span></span></div>
+      <div class="mi"><span class="cb on"></span><span>Record microphone</span><span></span><span></span></div>
+      <div class="mi"><span class="cb on"></span><span>Include mouse pointer</span><span></span><span></span></div>
+      <div class="msep"></div>
+      <div class="mi active"><span></span><span>Quality: High</span><span></span><img class="sub" src="icons/arrow-down.svg" alt=""></div>
+      <div class="mi"><span></span><span>Frame Rate: 60</span><span></span><img class="sub" src="icons/arrow-down.svg" alt=""></div>
+      <div class="mi"><span></span><span>Format: MP4</span><span></span><img class="sub" src="icons/arrow-down.svg" alt=""></div>
+      <div class="msep"></div>
+      <div class="mi">${I('configure')}<span>Recording Settings…</span><span></span><span></span></div>
+    </div>
+    <div class="menu" id="qmenu" style="min-width:0">
+      <div class="mi"><span class="rb"></span><span>Small File</span><span class="hint">About 10 MB a minute</span><span></span></div>
+      <div class="mi"><span class="rb on"></span><span>High</span><span class="hint">About 27 MB a minute</span><span></span></div>
+      <div class="mi"><span class="rb"></span><span>Best</span><span class="hint">About 28 MB a minute</span><span></span></div>
+    </div>`,
+  recording: () => `${KONSOLE}${BROWSER('code-window-2.png')}<div class="recframe" style="left:169px;top:69px;width:722px;height:452px"></div>
+    <div style="visibility:hidden">${FINAL(false)}</div>
+    <div class="ftb recbar" style="top:535px"><span class="timer"><span class="dot"></span>0:42</span>${IO('media-playback-pause')}${IO('mic-on', 'on')}${B('media-playback-stop', 'Stop')}</div>
+    <div style="position:absolute;left:520px;top:300px">${ARROW}</div>`,
+  done: () => `<div class="notif"><div class="hd">${I('camera-video')}<span>Ectolens · now</span><span class="x">✕</span></div>
+    <div class="body"><div><div class="ttl">Window</div><div class="txt">A recording was saved as 'Screencast_20261101_141502.mp4' to '~/Videos/Screencasts'.</div></div><div class="thumb"></div></div>
+    </div>`,
+};
+document.querySelectorAll('[data-scene]').forEach(el => { el.innerHTML = SCENES[el.dataset.scene](); });
+
+/* place things that depend on measured widths */
+function place() {
+  // the Record menu opens upward from the split button, right-aligned to it; Quality opens to its left
+  document.querySelectorAll('[data-scene="menu"]').forEach(sc => {
+    const s = sc.getBoundingClientRect();
+    const split = sc.querySelector('.fin .split').getBoundingClientRect();
+    const m = sc.querySelector('#recmenu'), q = sc.querySelector('#qmenu');
+    m.style.left = (split.right - s.left - m.offsetWidth) + 'px';
+    m.style.top = (split.top - s.top - 6 - 4 - m.offsetHeight) + 'px';
+    const act = m.querySelector('.mi.active').getBoundingClientRect();
+    q.style.left = (m.offsetLeft - q.offsetWidth + 2) + 'px';
+    q.style.top = (act.top - s.top - 5) + 'px';
+  });
+  // the recording bar puts Stop exactly where Record was: Stop's center lands on Record's center,
+  // so the pointer that pressed Record is already on Stop
+  document.querySelectorAll('[data-scene="recording"]').forEach(sc => {
+    const s = sc.getBoundingClientRect();
+    const rec = sc.querySelector('.fin .split > .tbtn').getBoundingClientRect();
+    const bar = sc.querySelector('.recbar');
+    bar.style.left = '0px';
+    const stop = bar.querySelector(':scope > .tbtn:last-child').getBoundingClientRect();
+    const b = bar.getBoundingClientRect();
+    const stopCenterInBar = (stop.left + stop.right) / 2 - b.left;
+    bar.style.left = ((rec.left + rec.right) / 2 - s.left - stopCenterInBar) + 'px';
+  });
+  // anatomy badges in the left gutter, with leaders to their parts
+  const an = document.getElementById('anat');
+  if (an && !an.dataset.done) {
+    an.dataset.done = 1;
+    const a = an.getBoundingClientRect();
+    const sc = an.querySelector('.screen').getBoundingClientRect();
+    const tag = (n, y, toX) => {
+      an.insertAdjacentHTML('beforeend', `<span class="badge" style="top:${y - 12}px">${n}</span><span class="lead" style="left:28px;top:${y}px;width:${toX - 28}px"></span>`);
+    };
+    const annot = an.querySelector('.screen > .ftb:not(.fin)').getBoundingClientRect();
+    const sel = an.querySelector('.sel').getBoundingClientRect();
+    const fin = an.querySelector('.fin').getBoundingClientRect();
+    tag(1, annot.top - a.top + annot.height / 2, annot.left - a.left);
+    tag(2, sel.top - a.top + sel.height / 2, sel.left - a.left);
+    tag(3, fin.top - a.top + fin.height / 2, fin.left - a.left);
+  }
+  // detail strip badges hang above their groups
+  const dt = document.getElementById('detail');
+  if (dt && !dt.dataset.done) {
+    dt.dataset.done = 1;
+    const d = dt.getBoundingClientRect();
+    const bar = dt.querySelector('.ftb');
+    const size = bar.querySelector('.tsize').getBoundingClientRect();
+    const btns = bar.querySelectorAll(':scope > .tbtn');
+    const first = btns[0].getBoundingClientRect(), last = btns[btns.length - 1].getBoundingClientRect();
+    const rec = bar.querySelector('.split').getBoundingClientRect();
+    const put = (n, l, r) => dt.insertAdjacentHTML('beforeend', `<span class="badge" style="left:${(l + r) / 2 - d.left - 12}px">${n}</span>`);
+    put(4, size.left, size.right); put(5, first.left, last.right); put(6, rec.left, rec.right);
+  }
+}
+
+/* settings dialog */
+const C = (t, w) => `<span class="combo" ${w ? `style="min-width:${w}px"` : ''}><span>${t}</span><img src="icons/arrow-down.svg" alt=""></span>`;
+const S = v => `<span class="spin"><span>${v}</span><i><b>▲</b><b>▼</b></i></span>`;
+document.getElementById('dlg').innerHTML = `
+  <div class="tbar">Configure — Ectolens<span class="ctl"><i></i><i></i><i></i></span></div>
+  <div class="main">
+    <div class="side">
+      <div class="pg"><img src="icons/22/configure.svg" alt="">General</div>
+      <div class="pg"><img src="icons/22/image-x-generic.svg" alt="">Image Saving</div>
+      <div class="pg on"><img src="icons/22/camera-video.svg" alt="">Recording</div>
+      <div class="pg"><img src="icons/22/preferences-desktop-keyboard.svg" alt="">Shortcuts</div>
+    </div>
+    <div class="page">
+      <h5>Recording</h5>
+      <div class="imsg"><img src="icons/22/dialog-information.svg" alt=""><span>Recordings are High quality at 60 frames per second, encoded by x264 on your processor. A minute of your whole screen comes to about 27 MB, and this computer encodes it 3.3 times faster than it needs to.</span><span class="pbtn">Check Again</span></div>
+      <div class="form">
+        <div class="lab top" style="margin-top:12px">Quality:</div>
+        <div class="opts">
+          <div class="opt" style="margin-top:12px"><span class="rb"></span><div>Small file<div class="d">About 10 MB a minute. Fine for chat and bug reports.</div></div></div>
+          <div class="opt"><span class="rb on"></span><div>High<div class="d">About 27 MB a minute. Text stays sharp, and it plays everywhere.</div></div></div>
+          <div class="opt"><span class="rb"></span><div>Best<div class="d">About 28 MB a minute. Full color detail for editing later. Firefox and some phones can't play it.</div></div></div>
+          <div class="opt"><span class="rb"></span><div>Custom<div class="d">Chosen for you when you change a setting under Encoder.</div></div></div>
+        </div>
+
+        <div class="sec">Picture</div>
+        <div class="lab">Frame Rate:</div><div class="ctlrow">${C('60', 80)}<span>frames per second</span><span class="hintline">Your screen shows up to 240.</span></div>
+        <div class="lab">Resolution:</div><div class="ctlrow">${C('Same as screen', 170)}</div>
+
+        <div class="sec">Encoder</div>
+        <div class="lab">Encoder:</div><div class="ctlrow">${C('x264 on the processor', 220)}</div>
+        <div></div><div class="hintline" style="margin-top:-4px">Found on this computer: x264, x265, SVT-AV1 and VP9 on the processor; NVENC H.264 and HEVC on an NVIDIA GeForce card.</div>
+        <div class="lab">Speed:</div><div class="ctlrow"><span class="slider"><span class="end">Faster</span><span class="track"><span class="fill" style="width:25%"></span><span class="knob" style="left:calc(25% - 9px)"></span></span><span class="end">Smaller files</span></span><span>Very fast</span></div>
+        <div class="lab">Rate Control:</div><div class="ctlrow">${C('Constant quality', 170)}</div>
+        <div class="lab">Quality Level:</div><div class="ctlrow">${S('16')}<span class="hintline">Lower numbers are sharper and make bigger files.</span></div>
+        <div class="lab">Keyframe Every:</div><div class="ctlrow">${S('2')}<span>seconds</span></div>
+        <div class="lab">Color Detail:</div><div class="ctlrow">${C('4:2:0, plays everywhere', 220)}</div>
+        <div class="lab">Color Range:</div><div class="ctlrow">${C('Limited', 120)}<span class="hintline">Full keeps every shade, but some players show it wrong.</span></div>
+        <div class="lab">Extra Options:</div><div class="ctlrow"><span class="edit ph">x264 options, such as bframes=3</span></div>
+
+        <div class="sec">Sound</div>
+        <div class="lab top">Sound:</div>
+        <div class="opts">
+          <div class="opt"><span class="cb on"></span><div>Record system audio</div></div>
+          <div class="opt" style="align-items:center"><span class="cb on"></span><div class="ctlrow">Record microphone ${C('Default microphone', 190)}</div></div>
+        </div>
+        <div class="lab top">Tracks:</div>
+        <div class="opts">
+          <div class="opt"><span class="rb on"></span><div>Mix into one track</div></div>
+          <div class="opt"><span class="rb"></span><div>Separate track for each<div class="d">Keeps your voice apart from system sound for editing.</div></div></div>
+        </div>
+        <div class="lab">Audio Format:</div><div class="ctlrow">${C('AAC', 90)}${C('160 kb/s', 110)}</div>
+
+        <div class="sec">File</div>
+        <div class="lab">Format:</div><div class="ctlrow">${C('MP4', 90)}<span class="hintline">Written in pieces as it records, so a crash can't ruin the file.</span></div>
+        <div class="lab">Split:</div><div class="ctlrow"><span class="cb"></span><span>Start a new file every</span>${S('30')}<span>minutes</span></div>
+        <div class="lab">Save Location:</div><div class="ctlrow"><span class="edit">~/Videos/Screencasts</span><span class="pbtn" style="padding:0 7px">${I('document-open-folder')}</span></div>
+        <div class="lab">Filename:</div><div class="ctlrow"><span class="edit">Screencast_&lt;yyyy&gt;&lt;MM&gt;&lt;dd&gt;_&lt;HH&gt;&lt;mm&gt;&lt;ss&gt;</span><span>.mp4</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span class="pbtn">${I('document-revert')}Defaults</span><span class="sp"></span><span class="pbtn">${I('dialog-ok')}OK</span><span class="pbtn">${I('dialog-ok-apply')}Apply</span><span class="pbtn">${I('dialog-cancel')}Cancel</span></div>`;
+
+// no requestAnimationFrame here: a background tab pauses it, and the review tab often is one
+place();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(place);
+window.addEventListener('load', place);
+</script>
+</body>
+</html>

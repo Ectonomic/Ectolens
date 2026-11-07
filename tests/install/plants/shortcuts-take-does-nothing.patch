@@ -1,0 +1,15 @@
+Planted fault for tests/install/rpm-check.sh (PLANT=tests/install/plants/shortcuts-take-does-nothing.patch).
+rpm-check: ectolens-shortcuts take moves nothing. Must fail: ectolens-shortcuts take gives Print Screen to Ectolens.
+
+diff -ru a/tools/install/ectolens-shortcuts b/tools/install/ectolens-shortcuts
+--- a/tools/install/ectolens-shortcuts	2026-11-05 02:22:33.808358346 -0500
++++ b/tools/install/ectolens-shortcuts	2026-11-05 02:22:33.808409207 -0500
+@@ -17,7 +17,7 @@
+ [ "$(id -u)" != 0 ] || fail "run this as yourself, not as root: shortcuts belong to one person"
+ FORCE=0 GIVE_BACK="ectolens-shortcuts give-back"
+ case "${1:-}" in
+-    take) take_shortcuts;;
++    take) :;;
+     give-back)
+         [ -s "$STATE/spectacle-shortcuts" ] || fail "no shortcuts were moved from Spectacle for you ($STATE)"
+         give_back_shortcuts

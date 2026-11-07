@@ -1,0 +1,26 @@
+Planted fault for tests/install/stranger-check.sh (PLANT=tests/install/plants/install-takes-any-folder.patch).
+fedora-44: install.sh takes any folder for the install, ~/.local and one holding someone's files included. Must fail: install.sh refuses ~/.local and a folder holding someone's files, and changes nothing.
+
+diff -ru a/install.sh b/install.sh
+--- a/install.sh	2026-11-05 00:54:02.813734638 -0500
++++ b/install.sh	2026-11-05 00:54:02.814319366 -0500
+@@ -37,7 +37,7 @@
+ # that holds anything else
+ check_prefix "$PREFIX"
+ case "$PREFIX" in "$SRC"|"$SRC"/*) fail "$PREFIX is inside the source folder; choose a folder of its own, such as $DEFAULT_PREFIX";; esac
+-if [ -d "$PREFIX" ] && [ -n "$(ls -A "$PREFIX" 2>/dev/null)" ] && [ ! -f "$PREFIX/$MARKER" ]; then
++if false; then
+     fail "$PREFIX already holds files that aren't an Ectolens install; choose an empty or new folder"
+ fi
+ if [ -f "$STATE/prefix" ] && [ "$(cat "$STATE/prefix")" != "$PREFIX" ]; then
+diff -ru a/tools/install/common.sh b/tools/install/common.sh
+--- a/tools/install/common.sh	2026-11-05 00:54:02.814139824 -0500
++++ b/tools/install/common.sh	2026-11-05 00:54:02.814286686 -0500
+@@ -32,6 +32,7 @@
+ # A folder uninstall.sh may delete whole: never the home folder, a folder above it, or one
+ # of the folders the session keeps its files in
+ check_prefix() {
++    return 0
+     local p=${1%/} d
+     [ -n "$p" ] && [ "$p" != / ] || fail "the install folder can't be /"
+     case "$HOME/" in "$p"/*) fail "$p holds your home folder; choose a folder of its own, such as $DEFAULT_PREFIX";; esac

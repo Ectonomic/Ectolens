@@ -1,0 +1,24 @@
+Planted fault for tests/install/stranger-check.sh (PLANT=tests/install/plants/install-moves-again-every-time.patch).
+fedora-44: install.sh redoes the move on every run, over what the person changed since. Must fail: a third install.sh updates in place and leaves a shortcut the person cleared cleared.
+
+diff -ru a/tools/install/shortcuts.sh b/tools/install/shortcuts.sh
+--- a/tools/install/shortcuts.sh	2026-11-05 02:05:55.136604151 -0500
++++ b/tools/install/shortcuts.sh	2026-11-05 02:05:55.136770844 -0500
+@@ -14,7 +14,7 @@
+         # KWin's shortcut service learns about Ectolens from the files just linked
+         for _ in $(seq 50); do has_component "$ECTOLENS" && break; sleep 0.2; done
+         has_component "$ECTOLENS" || fail "KDE's shortcut service hasn't picked up Ectolens; log out and in, then run this again"
+-        if [ -f "$STATE/spectacle-shortcuts" ] && [ ! -f "$STATE/moving" ]; then
++        if false; then
+             say "Already moved by an earlier run; left as they are."
+         else
+             finishing=0
+@@ -40,7 +40,7 @@
+             # action Ectolens already has keys for was moved, or chosen since, and stays.
+             moved=$(mktemp)
+             while IFS=$'\t' read -r action k; do
+-                [ "$finishing" = 1 ] && ! no_keys "$(keys "$ECTOLENS" "$action")" && continue
++
+                 set_keys "$SPECTACLE" "$action" '@a(ai) []'
+                 set_keys "$ECTOLENS" "$action" "$k"
+                 printf '%s\t%s\n' "$action" "$k" >> "$moved"

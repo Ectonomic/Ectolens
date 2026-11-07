@@ -69,6 +69,13 @@ void HelpMenu::showAppHelp()
     kHelpMenu->appHelpActivated();
 }
 
+void HelpMenu::trigger(KHelpMenu::MenuId id)
+{
+    if (auto action = kHelpMenu->action(id)) {
+        action->trigger();
+    }
+}
+
 void HelpMenu::onTriggered(QAction *action)
 {
     auto transientParent = getWidgetTransientParent(this);

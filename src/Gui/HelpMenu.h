@@ -22,6 +22,8 @@ public:
     static HelpMenu *instance();
 
     Q_SLOT void showAppHelp();
+    /// Ectolens: run one of KHelpMenu's entries (Report a Bug, About) from the new menus.
+    void trigger(KHelpMenu::MenuId id);
 
     static HelpMenu *create(QQmlEngine *engine, QJSEngine *)
     {

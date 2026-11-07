@@ -49,7 +49,7 @@ struct CommandLineOptions {
     };
     const QCommandLineOption launchOnly = {
         {u"l"_s, u"launchonly"_s},
-        i18n("Launch Spectacle without taking a screenshot")
+        i18n("Launch Ectolens without taking a screenshot")
     };
     const QCommandLineOption gui = {
         {u"g"_s, u"gui"_s},

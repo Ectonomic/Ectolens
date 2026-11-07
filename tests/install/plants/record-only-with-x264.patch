@@ -1,0 +1,27 @@
+Planted fault for tests/install/stranger-check.sh (PLANT=tests/install/plants/record-only-with-x264.patch).
+fedora-44: recordings use the chosen encoder or nothing, as before 2026-11-05; Fedora's own FFmpeg has no x264. Must fail: a 5-second recording of an area was saved and plays back.
+
+diff -ru a/3rdparty/kpipewire/src/pipewireproduce.cpp b/3rdparty/kpipewire/src/pipewireproduce.cpp
+--- a/3rdparty/kpipewire/src/pipewireproduce.cpp	2026-11-05 00:54:02.808206270 -0500
++++ b/3rdparty/kpipewire/src/pipewireproduce.cpp	2026-11-05 00:54:02.809137503 -0500
+@@ -901,7 +901,7 @@
+         // what was set for that encoder alone (its speed names and own options, such as
+         // NVENC's "p5", its quality scale) would make x264 in the search below refuse to
+         // open, or record at another encoder's numbers: the search's encoder uses its own
+-        m_encoderSettings = {};
++        return nullptr;
+     }
+ 
+     switch (m_encoderType) {
+diff -ru a/src/Platforms/VideoPlatformWayland.cpp b/src/Platforms/VideoPlatformWayland.cpp
+--- a/src/Platforms/VideoPlatformWayland.cpp	2026-11-05 00:54:02.808703237 -0500
++++ b/src/Platforms/VideoPlatformWayland.cpp	2026-11-05 00:54:02.809040152 -0500
+@@ -338,7 +338,7 @@
+             custom.bFrames = Settings::videoBFrames();
+             custom.fullColor = Settings::videoFullColor();
+             custom.extraOptions = Settings::videoExtraOptions();
+-            m_recorder->setEncoderSettings(RecordingQuality::settingsFor(static_cast<RecordingQuality::Preset>(Settings::videoQuality()), custom, RecordingQuality::encoderToUse(Settings::videoEncoder())));
++            m_recorder->setEncoderSettings(RecordingQuality::settingsFor(static_cast<RecordingQuality::Preset>(Settings::videoQuality()), custom, Settings::videoEncoder()));
+         } else {
+             m_recorder->setEncoderSettings({});
+         }

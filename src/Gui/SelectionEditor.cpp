@@ -5,11 +5,14 @@
  */
 
 #include "SelectionEditor.h"
+#include "Gui/CaptureTools.h"
+#include "SpectacleCore.h"
 
 #include "CaptureWindow.h"
 #include "Selection.h"
 #include "Geometry.h"
 #include "settings.h"
+#include "Platforms/WindowPicker.h"
 #include "DebugUtils.h"
 
 #include <KLocalizedString>
@@ -133,6 +136,16 @@ public:
     qreal devicePixelRatio = 1;
     qreal devicePixel = 1;
     QPointF mousePos;
+    // Ectolens: window and screen picking
+    QRectF hoverRect;
+    QString hoverUuid;
+    QRectF pickedRect;
+    QString pickedUuid;
+    QString hoverIcon; // the hovered window's app icon
+    QString pickedIcon;
+    QString pickedApp; // the app's name, for the notification's title
+    QString pendingPick; // frame this window once the overlay is back (after a resize)
+    void updateHover();
     bool showMagnifier = Settings::showMagnifier() == Settings::ShowMagnifierAlways;
     Location magnifierLocation = Location::FollowMouse;
     bool disableArrowKeys = false;
@@ -398,6 +411,8 @@ SelectionEditor::SelectionEditor(QObject *parent)
 
     connect(d->selection.get(), &Selection::rectChanged, this, [this](){
         d->updateHandlePositions();
+        Q_EMIT frameIsWindowChanged(); // a moved or resized frame is no longer the window
+        d->updateHover();
     });
 }
 
@@ -466,6 +481,11 @@ bool SelectionEditor::acceptSelection(ExportManager::Actions actions)
     if (d->screensRect.isEmpty()) {
         return false;
     }
+    // Ectolens: not while Hide Private Info is still reading the frame (the picture would
+    // leave before its blurs are on it)
+    if (CaptureTools::instance()->hidingPrivateInfo()) {
+        return false;
+    }
 
     auto selectionRect = d->selection->normalized();
     if (Settings::rememberSelectionRect() == Settings::Always) {
@@ -513,6 +533,15 @@ void SelectionEditor::reset()
         }
         d->selection->setRect(selectionRect);
     }
+    if (!d->pendingPick.isEmpty()) {
+        pickWindow(d->pendingPick);
+        d->pendingPick.clear();
+    }
+}
+
+void SelectionEditor::setPendingPick(const QString &uuid)
+{
+    d->pendingPick = uuid;
 }
 
 bool SelectionEditor::eventFilter(QObject *watched, QEvent *event)
@@ -555,6 +584,11 @@ void SelectionEditor::keyPressEvent(QQuickItem *item, QKeyEvent *event)
 {
     d->pressedKeys.insert(event->keyCombination().key());
     Q_UNUSED(item);
+    // Ectolens: while an AI agent's request asks (its dialog up, before Adjust First), the frame
+    // stays as its preview shows it: the arrows and Shift's magnifier wait, and only Enter (Send)
+    // and Esc (Don't Send) answer
+    const auto core = SpectacleCore::instance();
+    const bool agentDialog = core && core->agentAsking() && !core->agentAdjusting();
     switch (event->key()) {
     case Qt::Key_Return:
     case Qt::Key_Enter:
@@ -565,12 +599,18 @@ void SelectionEditor::keyPressEvent(QQuickItem *item, QKeyEvent *event)
     case Qt::Key_Right:
     case Qt::Key_Down:
     case Qt::Key_Left:
+        if (agentDialog) {
+            event->accept();
+            break;
+        }
         d->handleArrowKey(event);
         d->setShowMagnifier(event->modifiers().testFlag(Qt::ShiftModifier));
         event->accept();
         break;
     case Qt::Key_Shift:
-        d->setShowMagnifier(true);
+        if (!agentDialog) {
+            d->setShowMagnifier(true);
+        }
         break;
     default:
         break;
@@ -600,6 +640,121 @@ void SelectionEditor::keyReleaseEvent(QQuickItem *item, QKeyEvent *event)
     }
 }
 
+void SelectionEditorPrivate::updateHover()
+{
+    QRectF rect;
+    QString uuid;
+    QString icon;
+    if (selection->isEmpty() && dragLocation == SelectionEditor::None) {
+        if (KWindowSystem::isPlatformWayland()) {
+            if (const auto window = WindowPicker::instance()->windowAt(mousePos)) {
+                rect = QRectF(window->geometry).intersected(screensRect);
+                uuid = window->uuid;
+                icon = window->iconName;
+            }
+        }
+        if (rect.isEmpty()) {
+            // over the desktop: the whole screen under the pointer
+            for (const auto window : CaptureWindow::instances()) {
+                const QRectF screen = window->screenToFollow()->geometry();
+                if (screen.contains(mousePos)) {
+                    rect = screen;
+                    break;
+                }
+            }
+        }
+    }
+    if (rect != hoverRect || uuid != hoverUuid || icon != hoverIcon) {
+        hoverRect = rect;
+        hoverUuid = uuid;
+        hoverIcon = icon;
+        Q_EMIT q->hoverRectChanged();
+    }
+}
+
+QRectF SelectionEditor::hoverRect() const
+{
+    return d->hoverRect;
+}
+
+bool SelectionEditor::hoverIsWindow() const
+{
+    return !d->hoverUuid.isEmpty();
+}
+
+bool SelectionEditor::frameIsWindow() const
+{
+    return !frameWindowUuid().isEmpty();
+}
+
+QString SelectionEditor::frameWindowUuid() const
+{
+    return !d->pickedUuid.isEmpty() && d->selection->rectF() == d->pickedRect ? d->pickedUuid : QString();
+}
+
+void SelectionEditor::hoverAt(const QPointF &position)
+{
+    d->mousePos = position;
+    Q_EMIT mousePositionChanged();
+    d->updateHover();
+}
+
+bool SelectionEditor::takeHovered()
+{
+    if (d->hoverRect.isEmpty()) {
+        return false;
+    }
+    // Copy first: setting the selection clears the hover.
+    const QRectF rect = d->hoverRect;
+    const QString uuid = d->hoverUuid;
+    const QString icon = d->hoverIcon;
+    d->pickedUuid.clear();
+    d->selection->setRect(rect);
+    d->pickedRect = d->selection->rectF();
+    d->pickedUuid = uuid;
+    d->pickedIcon = icon;
+    d->pickedApp.clear();
+    if (const auto window = uuid.isEmpty() || !KWindowSystem::isPlatformWayland() ? std::nullopt : WindowPicker::instance()->window(uuid)) {
+        d->pickedApp = WindowPicker::appName(*window);
+    }
+    Q_EMIT frameIsWindowChanged();
+    return true;
+}
+
+bool SelectionEditor::pickWindow(const QString &uuid)
+{
+    if (uuid.isEmpty() || !KWindowSystem::isPlatformWayland()) {
+        return false;
+    }
+    const auto window = WindowPicker::instance()->window(uuid);
+    if (!window) {
+        return false;
+    }
+    d->pickedUuid.clear();
+    d->selection->setRect(QRectF(window->geometry).intersected(d->screensRect));
+    d->pickedRect = d->selection->rectF();
+    d->pickedUuid = uuid;
+    d->pickedIcon = window->iconName;
+    d->pickedApp = WindowPicker::appName(*window);
+    Q_EMIT frameIsWindowChanged();
+    return true;
+}
+
+QString SelectionEditor::hoverIconName() const
+{
+    return d->hoverIcon;
+}
+
+QString SelectionEditor::frameIconName() const
+{
+    return frameIsWindow() ? d->pickedIcon : QString();
+}
+
+QString SelectionEditor::frameAppName() const
+{
+    return frameIsWindow() ? d->pickedApp : QString();
+}
+
 void SelectionEditor::hoverMoveEvent(QQuickItem *item, QHoverEvent *event)
 {
     if (!item->window() || !item->window()->screen()) {
@@ -609,6 +764,7 @@ void SelectionEditor::hoverMoveEvent(QQuickItem *item, QHoverEvent *event)
     d->mousePos = mapSceneToLogicalGlobalPoint(scenePosition, item);
     Q_EMIT mousePositionChanged();
     d->setMouseCursor(item, d->mousePos);
+    d->updateHover();
 }
 
 void SelectionEditor::mousePressEvent(QQuickItem *item, QMouseEvent *event)
@@ -741,7 +897,15 @@ void SelectionEditor::mouseReleaseEvent(QQuickItem *item, QMouseEvent *event)
     switch (event->button()) {
     case Qt::LeftButton:
     case Qt::RightButton:
-        if (d->dragLocation == Location::Outside && (Settings::useReleaseToCapture() || d->forceReleaseCapture)) {
+        if (d->dragLocation == Location::Outside && d->selection->width() <= 2 * d->devicePixel && d->selection->height() <= 2 * d->devicePixel
+            && !d->hoverRect.isEmpty() && event->button() == Qt::LeftButton) {
+            // Ectolens: a click without a drag takes the window under the pointer,
+            // or the whole screen over the desktop.
+            takeHovered();
+            if (Settings::useReleaseToCapture() || d->forceReleaseCapture) {
+                acceptSelection();
+            }
+        } else if (d->dragLocation == Location::Outside && (Settings::useReleaseToCapture() || d->forceReleaseCapture)) {
             acceptSelection();
         } else {
             d->disableArrowKeys = false;

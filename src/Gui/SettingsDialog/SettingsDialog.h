@@ -9,9 +9,11 @@
 
 #include <KConfigDialog>
 
+class AppearanceOptionsPage;
 class GeneralOptionsPage;
 class ImageSaveOptionsPage;
-class VideoSaveOptionsPage;
+class RecordingOptionsPage;
+class KPageWidgetItem;
 class ShortcutsOptionsPage;
 
 class SettingsDialog : public KConfigDialog
@@ -22,9 +24,16 @@ public:
     explicit SettingsDialog(QWidget *parent = nullptr);
     ~SettingsDialog() override;
 
+    /// Ectolens: open on Settings › Recording
+    void showRecordingPage();
+    /// Ectolens: open on Settings › Appearance or Shortcuts
+    void showAppearancePage();
+    void showShortcutsPage();
+
 protected:
     QSize sizeHint() const override;
     void showEvent(QShowEvent *event) override;
+    void hideEvent(QHideEvent *event) override;
 
 private:
     bool hasChanged() override;
@@ -35,8 +44,12 @@ private:
 
     GeneralOptionsPage *const m_generalPage;
     ImageSaveOptionsPage *const m_imagesPage;
-    VideoSaveOptionsPage *const m_videosPage;
+    RecordingOptionsPage *const m_videosPage;
+    KPageWidgetItem *m_recordingItem = nullptr;
     ShortcutsOptionsPage *const m_shortcutsPage;
+    AppearanceOptionsPage *const m_appearancePage;
+    KPageWidgetItem *m_appearanceItem = nullptr;
+    KPageWidgetItem *m_shortcutsItem = nullptr;
 };
 
 #endif // SETTINGSDIALOG_H

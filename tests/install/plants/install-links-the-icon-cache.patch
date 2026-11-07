@@ -1,0 +1,14 @@
+Planted fault for tests/install/stranger-check.sh (PLANT=tests/install/plants/install-links-the-icon-cache.patch).
+fedora-44: install.sh links everything under the install's icons folder, the icon cache CMake built there too. Must fail: every link is one of Ectolens's own files.
+
+diff -ru a/install.sh b/install.sh
+--- a/install.sh	2026-11-05 01:09:07.272052892 -0500
++++ b/install.sh	2026-11-05 01:09:07.279109121 -0500
+@@ -229,7 +229,6 @@
+     case "$f" in
+         # icons only: the cache CMake's install builds beside them (icon-theme.cache) lists
+         # Ectolens's icons alone, and linked into ~/.local/share it would hide the person's others
+-        "$PREFIX"/share/icons/*) case "$f" in *.svg|*.svgz|*.png) ;; *) continue;; esac; rel=${f#"$PREFIX"/share/};;
+         "$PREFIX"/share/*) rel=${f#"$PREFIX"/share/};;
+         "$PREFIX"/lib/systemd/user/*) rel=systemd/user/${f#"$PREFIX"/lib/systemd/user/};;
+     esac

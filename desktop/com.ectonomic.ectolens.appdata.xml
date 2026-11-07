@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component type="desktop">
+  <id>com.ectonomic.ectolens.desktop</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-2.0+</project_license>
+  <developer id="org.kde">
+    <name translate="no">KDE</name>
+  </developer>
+  <name>Ectolens</name>
+  <summary>Take screenshots and recordings</summary>
+  <description>
+    <p>
+      Ectolens takes screenshots and screen recordings from one overlay: press Print Screen, frame a region, a window or a whole screen, then copy, save or record it. Recordings use quality settings you choose, at frame rates up to your screen's own, and are written so that a crash cannot ruin the file.
+    </p>
+    <p>
+      Ectolens is based on KDE Spectacle.
+    </p>
+  </description>
+  <content_rating type="oars-1.1"/>
+  <project_group>KDE</project_group>
+  <provides>
+    <binary>ectolens</binary>
+  </provides>
+  <launchable type="desktop-id">com.ectonomic.ectolens.desktop</launchable>
+  <releases>
+    <release version="6.8.2" date="2026-10-27"/>
+    <release version="6.8.1" date="2026-10-20"/>
+    <release version="6.8.0" date="2026-10-14"/>
+    <release version="6.7.5" date="2026-09-08"/>
+  </releases>
+</component>
