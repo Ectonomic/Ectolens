@@ -115,15 +115,15 @@ tools below.
 <img src="docs/pictures/readme-vs-framed.webp" width="100%" alt="The terminal framed, the divider sweeping from Spectacle to Ectolens. Spectacle: marking tools above the frame, a row of Accept, Cancel, Save, Save As, Copy, Extract Text and Export below it, and New Screenshot, New Recording and Options at the bottom of the screen. Ectolens: the frame's size and the marking tools above, and Capture, Record, Extract Text and the tools below">
 
 What a capture does next is set once, in **After Capture** on Capture's
-arrow, so Capture is the one button to press. The choices are to open it in
-an app, save it to a folder or ask where each time, show it in its folder,
-copy the picture or its file's path, and share it. Choose any mix, and
+arrow, so Capture is the one button to press. The choices are to copy the
+picture or its file's path, save it to a folder or ask where each time, show
+it in its folder, open it in an app, and share it. Choose any mix, and
 Ectolens does all of them each time you press Capture or Enter. To start
 with, After Capture copies the picture, or follows Spectacle's copy setting
 if you had one. A recording is always saved, in your Videos folder, and opens
 in the Ectolens window when Open with is set to Ectolens.
 
-<img src="docs/pictures/readme-after-capture.webp" width="100%" alt="The After Capture menu over a framed terminal: Open with Ectolens, Save to file in Screenshots or ask where each time, Show in folder, Copy to clipboard as the image or its file path, checked, and Share, asking each time">
+<img src="docs/pictures/readme-after-capture.webp" width="100%" alt="The After Capture menu over a framed terminal: Copy to clipboard as the image or its file path, checked, Save to file in Screenshots or ask where each time, Show in folder, Open with Ectolens, and Share, asking each time">
 
 ## Recording
 

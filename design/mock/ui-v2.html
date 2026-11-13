@@ -422,12 +422,12 @@
 
   <div class="step">
     <div class="step-head"><div><span class="n">4</span><h3>Capture's menu</h3></div>
-      <p>Capture's arrow is one list of what happens after a capture. Every row is a check, so they stack, and a choice at the end of the row says how. Open with, at the top, opens it in an app: Ectolens's own window first (what Accept opens today), then your image apps. Save to file puts it in Screenshots, or asks where each time. Copy to clipboard puts the image, or once there is a saved file, its path, on the clipboard. Share sends it on through KDE's share services. Show in folder opens the folder with the file picked out. An unchecked row dims its choice. Ctrl+Shift+S still opens Save As for a single capture.</p>
+      <p>Capture's arrow is one list of what happens after a capture. Every row is a check, so they stack, and a choice at the end of the row says how. Copy to clipboard, at the top, puts the image, or once there is a saved file, its path, on the clipboard. Save to file puts it in Screenshots, or asks where each time. Show in folder opens the folder with the file picked out. Open with opens it in an app: Ectolens's own window first (what Accept opens today), then your image apps. Share sends it on through KDE's share services. An unchecked row dims its choice. Ctrl+Shift+S still opens Save As for a single capture.</p>
       <figure class="today"><img class="app-match" src="img/v2/today-framed.png" alt=""><figcaption>Today: Accept, Save, Save As, Copy, Export</figcaption></figure></div>
     <div class="app"><div class="detail artifact win"><div class="screen" data-scene="capmenu" data-crop="270,122"></div></div></div>
     <div class="afterrow">
       <div class="app"><div class="menu-art win" data-after="path"></div></div>
-      <p><b>File Path is locked until Save to file is checked,</b> because a path needs a saved file to point to. That's why Save to file sits above Copy to clipboard, with Show in folder right under it: both need the saved file, so both stay locked until it's checked. Uncheck Save to file while File Path is chosen and Copy goes back to Image. If Save is set to ask where and you cancel that dialog, there is no file, so Ectolens copies the image instead and the notification says it wasn't saved.</p>
+      <p><b>File Path is locked until Save to file is checked,</b> because a path needs a saved file to point to. Show in folder needs the saved file too, so it sits right under Save to file and stays locked until Save to file is checked. Uncheck Save to file while File Path is chosen and Copy goes back to Image. If Save is set to ask where and you cancel that dialog, there is no file, so Ectolens copies the image instead and the notification says it wasn't saved.</p>
     </div>
     <div class="mainwin">
       <p class="label"><b>The Ectolens window</b> today, a real capture: Print Screen, Konsole clicked, Enter</p>
@@ -641,13 +641,13 @@ const MI = (inner, cls = '') => `<div class="mi ${cls}">${inner}</div>`;
 const MH = t => `<div class="mh">${t}</div>`, MS = `<div class="ms"></div>`;
 const SUB = `<img class="sub" src="icons/arrow-down.svg" alt="">`;
 // After Capture: each feature is a check that stacks; how it works is the choice at the end of its row.
-// Save to file comes before Copy because a file path needs the saved file: File Path is locked until Save to file is checked.
+// Order (2026-11-12): Copy to clipboard, Save to file, Show in folder, Open with, Share. File Path is locked until Save to file is checked.
 const SEG = (keys, names, on, dim = false, locked = []) => `<span class="seg${dim ? ' dim' : ''}">${keys.map(k => `<span class="${k === on ? 'on' : ''}${locked.includes(k) ? ' locked' : ''}">${names[k]}</span>`).join('')}</span>`;
 const AFTER = (copy, clip, save, where) => MH('After Capture')
-  + `<div class="mrow">${CHECK(false, 'Open with')}${PICK('Ectolens', true)}</div>`
+  + `<div class="mrow">${CHECK(copy, 'Copy to clipboard')}${SEG(['picture', 'path'], {picture: 'Image', path: 'File Path'}, clip, !copy, save ? [] : ['path'])}</div>`
   + `<div class="mrow">${CHECK(save, 'Save to file')}${SEG(['shots', 'ask'], {shots: 'Screenshots', ask: 'Ask where each time'}, where, !save)}</div>`
   + `<div class="mrow${save ? '' : ' locked'}">${CHECK(false, 'Show in folder')}</div>`
-  + `<div class="mrow">${CHECK(copy, 'Copy to clipboard')}${SEG(['picture', 'path'], {picture: 'Image', path: 'File Path'}, clip, !copy, save ? [] : ['path'])}</div>`
+  + `<div class="mrow">${CHECK(false, 'Open with')}${PICK('Ectolens', true)}</div>`
   + `<div class="mrow">${CHECK(false, 'Share')}${PICK('Ask each time', true)}</div>`
 
 // a dropdown at the end of a row: the chosen app or service, with its arrow

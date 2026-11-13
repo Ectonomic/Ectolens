@@ -7,8 +7,8 @@ import org.kde.spectacle.private
 /**
  * Capture's arrow: one list of what happens after a capture (design proposal 2, step 4).
  * Every row is a check, so they stack, and a choice at the end of the row says how.
- * Save to file sits above Copy to clipboard because a file path needs the saved file:
- * File Path and Show in folder stay locked until Save to file is checked.
+ * Order: Copy to clipboard, Save to file, Show in folder, Open with, Share (Settings › General
+ * lists them the same way). File Path and Show in folder stay locked until Save to file is checked.
  */
 EctoMenu {
     id: root
@@ -19,15 +19,15 @@ EctoMenu {
 
     EctoMenuHeader { text: i18nc("@title:menu", "After Capture") }
     EctoMenuRow {
-        id: openRow
-        text: i18nc("@option:check after a capture", "Open with")
-        checked: Settings.afterCaptureOpen
-        onToggled: on => { Settings.afterCaptureOpen = on; root.save() }
-        EctoPick {
-            id: appPick
-            text: CaptureTools.appName(Settings.afterCaptureOpenApp)
-            dimmed: !Settings.afterCaptureOpen
-            onClicked: appMenu.openAt(appPick, "below")
+        text: i18nc("@option:check after a capture", "Copy to clipboard")
+        checked: Settings.afterCaptureCopy
+        onToggled: on => { Settings.afterCaptureCopy = on; root.save() }
+        EctoSegmented {
+            dimmed: !Settings.afterCaptureCopy
+            model: [{value: Settings.CopyTheImage, text: i18nc("@item copy", "Image")},
+                    {value: Settings.CopyTheFilePath, text: i18nc("@item copy", "File Path"), enabled: Settings.autoSaveImage}]
+            value: Settings.autoSaveImage ? Settings.afterCaptureCopyWhat : Settings.CopyTheImage
+            onPicked: v => { Settings.afterCaptureCopyWhat = v; root.save() }
         }
     }
     EctoMenuRow {
@@ -56,15 +56,15 @@ EctoMenu {
         onToggled: on => { Settings.afterCaptureShowInFolder = on; root.save() }
     }
     EctoMenuRow {
-        text: i18nc("@option:check after a capture", "Copy to clipboard")
-        checked: Settings.afterCaptureCopy
-        onToggled: on => { Settings.afterCaptureCopy = on; root.save() }
-        EctoSegmented {
-            dimmed: !Settings.afterCaptureCopy
-            model: [{value: Settings.CopyTheImage, text: i18nc("@item copy", "Image")},
-                    {value: Settings.CopyTheFilePath, text: i18nc("@item copy", "File Path"), enabled: Settings.autoSaveImage}]
-            value: Settings.autoSaveImage ? Settings.afterCaptureCopyWhat : Settings.CopyTheImage
-            onPicked: v => { Settings.afterCaptureCopyWhat = v; root.save() }
+        id: openRow
+        text: i18nc("@option:check after a capture", "Open with")
+        checked: Settings.afterCaptureOpen
+        onToggled: on => { Settings.afterCaptureOpen = on; root.save() }
+        EctoPick {
+            id: appPick
+            text: CaptureTools.appName(Settings.afterCaptureOpenApp)
+            dimmed: !Settings.afterCaptureOpen
+            onClicked: appMenu.openAt(appPick, "below")
         }
     }
     EctoMenuRow {

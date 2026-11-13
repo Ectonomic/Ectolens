@@ -134,7 +134,7 @@ void GeneralOptionsPage::buildAfterCapture()
     stringChoice(u"afterCaptureShareTarget"_s, targets, shareTo);
 
     int row = 0;
-    for (auto [box, choice] : std::initializer_list<std::pair<QCheckBox *, QComboBox *>>{{open, openApp}, {save, where}, {folder, nullptr}, {copy, what}, {share, shareTo}}) {
+    for (auto [box, choice] : std::initializer_list<std::pair<QCheckBox *, QComboBox *>>{{copy, what}, {save, where}, {folder, nullptr}, {open, openApp}, {share, shareTo}}) {
         grid->addWidget(box, row, 0);
         if (choice) {
             grid->addWidget(choice, row, 1);
