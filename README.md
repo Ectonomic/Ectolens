@@ -43,32 +43,33 @@ can go back to it: [Installing](#installing).
 ## What Ectolens adds to Spectacle
 
 What changed from Spectacle's master branch of November 1, 2026, the day
-Ectolens started from it. Each row links to its section.
+Ectolens started from it, the biggest changes first. Each row links to its
+section.
 
 | | Spectacle | Ectolens |
 |---|---|---|
-| [Take a window from the overlay](#take-a-window-with-a-click) | Drag a frame around it | Point at it and click |
-| [Undo and Redo in the overlay](#take-a-window-with-a-click) | The marks | The marks and the frame's moves and resizes, in order |
-| [A picture or a video of the same frame](#capture-or-record-the-same-frame) | Switch the overlay to a recording mode first | **Capture** and **Record** side by side |
-| [What a capture does next](#what-a-capture-does-next) | A button for each, in a row below the frame | Set once in After Capture, so Capture is the one button |
-| [Share](#what-a-capture-does-next) | Every share service KDE has, public Imgur uploads included | Only the services that can work on your computer |
+| [Capture or record the same frame](#capture-or-record-the-same-frame) | Recording starts from its own menu, New Recording | **Capture** and **Record** side by side, for the same frame |
+| [Capture or record a window](#capture-or-record-a-window-with-a-click) | Drag a frame around the window | Point at the window and click |
+| [Hiding private information](#hide-private-information) | By hand, with the Blur or Pixelate tool | Found and blurred for you |
 | [Recording quality](#quality-and-frame-rate) | Fixed for each format | Small File, High, Best or your own settings |
-| [Frame rate](#quality-and-frame-rate) | Up to 60 per second | 30, 60, 120 or your screen's own |
-| [Encoders](#encoders-and-their-settings) | The best H.264 or VP9 encoder found | For MP4: x264, x265, SVT-AV1 or NVENC, your pick, or the system's own H.264 where FFmpeg lacks it |
-| [Sound](#separate-sound-tracks) | System sound and microphone mixed into one track | Mixed, or each on a track of its own too |
-| [Pause a recording](#pause-crash-safe-mp4-and-dropped-frames) | No | Yes, and the pause stays out of the file |
-| [An MP4 cut short by a crash](#pause-crash-safe-mp4-and-dropped-frames) | Won't play | Plays |
-| [Dropped frames](#pause-crash-safe-mp4-and-dropped-frames) | Not shown | Counted on the recording bar |
-| [A marking tool's options](#labels-badges-and-text-boxes) | A bar from the left end of the tool row | A row right above the tool's own button |
-| [Words on a capture](#labels-badges-and-text-boxes) | Lines you break yourself | Labels, and boxes whose words wrap |
-| [Aligning words](#labels-badges-and-text-boxes) | Always at the left | Left, centered or right; in a box, top, middle or bottom |
-| [Colors and fonts for marks](#colors-and-fonts) | Qt's color and font dialogs | Menus of their own, with fonts shown in their own faces |
-| [Blur private information](#blur-whats-private) | By hand, with Blur or Pixelate | Found and blurred for you |
-| [Exact capture sizes](#exact-sizes) | No | Typed or picked, with the window resized to fit |
-| [QR codes](#pick-a-color-measure-read-a-qr-code-pin) | Read in the window after a capture | Read in the overlay as you frame |
-| [Pick a color, measure, pin](#pick-a-color-measure-read-a-qr-code-pin) | No | Pick Color, Measure, Pin |
-| [AI agents](#captures-for-ai-agents) | No | An MCP server; nothing is sent until you press Send |
-| [Look](#ectos-look-or-kdes) | KDE's | Ecto's, or KDE's |
+| [Video encoders](#encoders-and-their-settings) | The best H.264 or VP9 encoder it finds | Your pick for MP4: x264, x265, SVT-AV1 or NVENC, or the system's own H.264 where FFmpeg lacks it |
+| [Frame rate](#quality-and-frame-rate) | Up to 60 frames a second | 30, 60, 120 or your screen's own rate |
+| [Pausing a recording](#pause-crash-safe-mp4-and-dropped-frames) | ❌ | ✅ The paused time stays out of the file |
+| [Recordings cut short by a crash](#pause-crash-safe-mp4-and-dropped-frames) | ❌ The MP4 won't play | ✅ The MP4 still plays |
+| [What happens after a capture](#what-a-capture-does-next) | A button for each action, in a row below the frame | Set once in After Capture, so Capture is the only button to press |
+| [Captures for AI agents](#captures-for-ai-agents) | ❌ | ✅ An MCP server; nothing reaches the agent until you press Send |
+| [Text on a capture](#labels-badges-and-text-boxes) | Lines that run on until you break them | Labels, and boxes that wrap the words |
+| [Undo and Redo](#undo-and-redo) | Marks only | Marks, plus the frame's moves and resizes |
+| [Recording sound](#separate-sound-tracks) | System sound and microphone mixed into one track | The mixed track, plus a track for each if you want |
+| [Capture sizes](#exact-capture-sizes) | ❌ | ✅ Type a size or pick one; a framed window is resized to fit |
+| [Color picker, ruler and pinning](#pick-a-color-measure-read-a-qr-code-pin) | ❌ | ✅ Pick Color, Measure and Pin |
+| [Reading QR codes](#pick-a-color-measure-read-a-qr-code-pin) | In the window, after a capture | In the overlay, while you frame |
+| [Dropped frames](#pause-crash-safe-mp4-and-dropped-frames) | ❌ Not shown | ✅ Counted on the recording bar |
+| [Where a tool's options open](#labels-badges-and-text-boxes) | In a bar starting at the left end of the tool row | Right above the tool's own button |
+| [Text alignment](#labels-badges-and-text-boxes) | Always left | Left, center or right; in a box, also top, middle or bottom |
+| [Color and font pickers](#colors-and-fonts) | Qt's standard dialogs | Ectolens's own menus, with each font shown in its own face |
+| [Sharing](#what-a-capture-does-next) | Every share service KDE has, including public Imgur uploads | Only the services that work on your computer |
+| [Appearance](#ectos-look-or-kdes) | KDE's style | Ecto's style or KDE's |
 
 The pictures below with a divider sweeping across them show the same moment
 in Spectacle 6.7.5, the version Plasma 6.7 ships, and in Ectolens, filmed on
@@ -76,15 +77,17 @@ the same desktop.
 
 ## The overlay
 
-### Take a window with a click
+### Capture or record a window with a click
 
 Before anything is framed, Spectacle shows its marking tools and a toolbar of
 actions, and asks you to click and drag. Ectolens shows one line that says
 what you can do, and outlines the window under the pointer with its size, so
-a click takes it. A click on the desktop takes the whole screen, Enter takes
-every screen, and a drag still frames any area.
+a click frames it. A click on the desktop frames the whole screen, Enter
+frames every screen, and a drag still frames any area.
 
 <img src="docs/pictures/readme-vs-unframed.webp" width="100%" alt="Before anything is framed, the divider sweeping from Spectacle to Ectolens. Spectacle: its marking tools at the top, Click and drag to make a selection in the middle, and a toolbar of Accept, Cancel, save and copy buttons, Export, New Screenshot, New Recording and Options at the bottom. Ectolens: one line at the top saying Click a window or the desktop, or drag an area, and the terminal under the pointer outlined with its size">
+
+### Undo and Redo
 
 Undo and Redo cover the frame as well as your marks: they take back its moves
 and resizes in the order you made them. In Spectacle they take back only the
@@ -265,7 +268,7 @@ After Capture did.
 
 ## New tools in the overlay
 
-### Blur what's private
+### Hide private information
 
 Spectacle's Blur and Pixelate tools hide things by hand. **Hide Private
 Info** finds them for you: it reads the words in the frame with Tesseract,
@@ -275,13 +278,13 @@ GitLab, Slack, AWS and Google keys.
 
 <img src="docs/pictures/readme-hide-private.webp" width="100%" alt="A framed terminal showing an email address, an API key and a home folder's path. The pointer rests on Hide Private Info, whose tooltip says what it blurs; a click blurs all three, and a note says six private items were blurred">
 
-### Exact sizes
+### Exact capture sizes
 
 The frame's size label is also a menu of sizes: type a width and height, or
 pick Full HD, HD, QHD, ultrawide, square or phone. When the frame holds a
 window, Ectolens resizes the window to fit and puts it back afterward.
 
-<img src="docs/pictures/readme-sizes.webp" width="100%" alt="A terminal taken with a click; its frame's label opens a menu of sizes, Full HD 1920×1080 is picked, and the terminal grows to exactly that size inside the frame">
+<img src="docs/pictures/readme-sizes.webp" width="100%" alt="A terminal framed with a click; its frame's label opens a menu of sizes, Full HD 1920×1080 is picked, and the terminal grows to exactly that size inside the frame">
 
 ### Pick a color, measure, read a QR code, pin
 
