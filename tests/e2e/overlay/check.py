@@ -577,7 +577,9 @@ if scenario == 'tools':
             elif now == step and l.startswith('ECTOLENS-ANATOMY FONT ') and ' tip ' in f' {l} ':
                 seen += 1
         return seen
-    results_tips = [(tips_at('hidden') == 0, "after a click on Hide Private Info, its tooltip is gone, so its note shows", f'{tips_at("hidden")} tooltip words'),
+    saving = [l[2:] for l in lines('ECTOLENS-PROP') if l[:2] == ['afterSave', 'checked']]
+    results_tips = [(saving == [['false'], ['true']], "After Capture's File Path, clicked with Save to file off, checks Save to file", str(saving)),
+                    (tips_at('hidden') == 0, "after a click on Hide Private Info, its tooltip is gone, so its note shows", f'{tips_at("hidden")} tooltip words'),
                     (tips_at('rehover') > 0, 'with the pointer off the button and back, its tooltip shows again', f'{tips_at("rehover")} tooltip words')]
     frames = lines('ECTOLENS-FRAME')
     menus = lines('ECTOLENS-MENUS')

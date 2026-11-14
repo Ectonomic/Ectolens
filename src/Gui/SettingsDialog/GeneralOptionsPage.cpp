@@ -23,7 +23,6 @@
 #include <QGridLayout>
 #include <QIcon>
 #include <QLineEdit>
-#include <QStandardItemModel>
 
 using namespace Qt::Literals::StringLiterals;
 
@@ -142,14 +141,16 @@ void GeneralOptionsPage::buildAfterCapture()
         ++row;
     }
 
-    // File Path and Show in folder need the saved file, so they wait for Save to file.
-    auto *pathItem = qobject_cast<QStandardItemModel *>(what->model());
+    // File Path needs the saved file: picking it checks Save to file, and unchecking Save to file
+    // sets it back to Image. Show in folder waits for Save to file.
+    connect(what, &QComboBox::activated, this, [save](int i) {
+        if (i == 1) {
+            save->setChecked(true);
+        }
+    });
     auto lock = [=] {
         const bool saving = save->isChecked();
         folder->setEnabled(saving);
-        if (pathItem) {
-            pathItem->item(1)->setEnabled(saving);
-        }
         if (!saving && what->currentIndex() == 1) {
             what->setCurrentIndex(0);
         }

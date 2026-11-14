@@ -15,7 +15,8 @@ echo "PASS  settings copied once from spectaclerc"
 T2=$(mktemp -d); trap 'rm -rf "$T" "$T2"' EXIT
 mkdir -p "$T2/.config"; printf '[General]\nclipboardGroup=PostScreenshotCopyLocation\n' > "$T2/.config/spectaclerc"
 HOME=$T2 XDG_CONFIG_HOME=$T2/.config QT_QPA_PLATFORM=offscreen timeout 10 "$BIN/ectolens" --version >/dev/null 2>&1
-grep -q "afterCaptureCopyWhat=CopyTheFilePath" "$T2/.config/ectolensrc" && ! grep -q "clipboardGroup" "$T2/.config/ectolensrc" \
+grep -q "afterCaptureCopyWhat=CopyTheFilePath" "$T2/.config/ectolensrc" && grep -q "autoSaveImage=true" "$T2/.config/ectolensrc" \
+    && ! grep -q "clipboardGroup" "$T2/.config/ectolensrc" \
     || { echo "FAIL  Spectacle's copy choice did not carry over to After Capture"; cat "$T2/.config/ectolensrc"; exit 1; }
 echo "PASS  Spectacle's copy choice carried over to After Capture"
 # a Share service Ectolens no longer offers gives way to Ask each time; one it offers stays

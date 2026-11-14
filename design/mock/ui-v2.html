@@ -427,7 +427,7 @@
     <div class="app"><div class="detail artifact win"><div class="screen" data-scene="capmenu" data-crop="270,122"></div></div></div>
     <div class="afterrow">
       <div class="app"><div class="menu-art win" data-after="path"></div></div>
-      <p><b>File Path is locked until Save to file is checked,</b> because a path needs a saved file to point to. Show in folder needs the saved file too, so it sits right under Save to file and stays locked until Save to file is checked. Uncheck Save to file while File Path is chosen and Copy goes back to Image. If Save is set to ask where and you cancel that dialog, there is no file, so Ectolens copies the image instead and the notification says it wasn't saved.</p>
+      <p><b>Picking File Path checks Save to file,</b> because a path needs a saved file to point to (2026-11-13; it used to stay locked until Save to file was checked). Show in folder needs the saved file too, so it sits right under Save to file and stays locked until Save to file is checked. Uncheck Save to file while File Path is chosen and Copy goes back to Image. If Save is set to ask where and you cancel that dialog, there is no file, so Ectolens copies the image instead and the notification says it wasn't saved.</p>
     </div>
     <div class="mainwin">
       <p class="label"><b>The Ectolens window</b> today, a real capture: Print Screen, Konsole clicked, Enter</p>
@@ -641,10 +641,10 @@ const MI = (inner, cls = '') => `<div class="mi ${cls}">${inner}</div>`;
 const MH = t => `<div class="mh">${t}</div>`, MS = `<div class="ms"></div>`;
 const SUB = `<img class="sub" src="icons/arrow-down.svg" alt="">`;
 // After Capture: each feature is a check that stacks; how it works is the choice at the end of its row.
-// Order (2026-11-12): Copy to clipboard, Save to file, Show in folder, Open with, Share. File Path is locked until Save to file is checked.
+// Order (2026-11-12): Copy to clipboard, Save to file, Show in folder, Open with, Share. Picking File Path checks Save to file (2026-11-13).
 const SEG = (keys, names, on, dim = false, locked = []) => `<span class="seg${dim ? ' dim' : ''}">${keys.map(k => `<span class="${k === on ? 'on' : ''}${locked.includes(k) ? ' locked' : ''}">${names[k]}</span>`).join('')}</span>`;
 const AFTER = (copy, clip, save, where) => MH('After Capture')
-  + `<div class="mrow">${CHECK(copy, 'Copy to clipboard')}${SEG(['picture', 'path'], {picture: 'Image', path: 'File Path'}, clip, !copy, save ? [] : ['path'])}</div>`
+  + `<div class="mrow">${CHECK(copy, 'Copy to clipboard')}${SEG(['picture', 'path'], {picture: 'Image', path: 'File Path'}, clip, !copy)}</div>`
   + `<div class="mrow">${CHECK(save, 'Save to file')}${SEG(['shots', 'ask'], {shots: 'Screenshots', ask: 'Ask where each time'}, where, !save)}</div>`
   + `<div class="mrow${save ? '' : ' locked'}">${CHECK(false, 'Show in folder')}</div>`
   + `<div class="mrow">${CHECK(false, 'Open with')}${PICK('Ectolens', true)}</div>`

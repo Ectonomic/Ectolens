@@ -7,7 +7,8 @@ import org.kde.spectacle.private
 /**
  * The design system's segmented control (bits.tsx): one choice of a few, in a well with 8 px
  * corners; the chosen one sits raised on bg.
- * model: a list of {value, text, enabled}; value: the chosen value.
+ * model: a list of {value, text, enabled, name}; value: the chosen value (name: an objectName
+ * for the tests).
  *
  * Its choices stand as far from the well's sides as from its top and bottom (the mock's 2 px
  * padding inside a 1 px border), with corners concentric with the well's. Given more room than
@@ -52,6 +53,7 @@ Rectangle {
             delegate: Rectangle {
                 id: seg
                 required property var modelData
+                objectName: seg.modelData.name !== undefined ? seg.modelData.name : "" // for the tests
                 readonly property bool on: modelData.value === root.value
                 readonly property bool usable: modelData.enabled === undefined || modelData.enabled
                 readonly property real wanted: Math.ceil(label.implicitWidth) + EctoTheme.controlPadding * 2

@@ -8,7 +8,9 @@ import org.kde.spectacle.private
  * Capture's arrow: one list of what happens after a capture (design proposal 2, step 4).
  * Every row is a check, so they stack, and a choice at the end of the row says how.
  * Order: Copy to clipboard, Save to file, Show in folder, Open with, Share (Settings › General
- * lists them the same way). File Path and Show in folder stay locked until Save to file is checked.
+ * lists them the same way). Picking File Path checks Save to file, since a path needs the saved
+ * file; unchecking Save to file sets it back to Image. Show in folder stays locked until Save to
+ * file is checked.
  */
 EctoMenu {
     id: root
@@ -25,12 +27,19 @@ EctoMenu {
         EctoSegmented {
             dimmed: !Settings.afterCaptureCopy
             model: [{value: Settings.CopyTheImage, text: i18nc("@item copy", "Image")},
-                    {value: Settings.CopyTheFilePath, text: i18nc("@item copy", "File Path"), enabled: Settings.autoSaveImage}]
+                    {value: Settings.CopyTheFilePath, text: i18nc("@item copy", "File Path"), name: "copyFilePath"}]
             value: Settings.autoSaveImage ? Settings.afterCaptureCopyWhat : Settings.CopyTheImage
-            onPicked: v => { Settings.afterCaptureCopyWhat = v; root.save() }
+            onPicked: v => {
+                Settings.afterCaptureCopyWhat = v
+                if (v === Settings.CopyTheFilePath) {
+                    Settings.autoSaveImage = true // a path needs the saved file
+                }
+                root.save()
+            }
         }
     }
     EctoMenuRow {
+        objectName: "afterSave"
         text: i18nc("@option:check after a capture", "Save to file")
         checked: Settings.autoSaveImage
         onToggled: on => {

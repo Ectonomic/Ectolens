@@ -89,6 +89,7 @@ int main(int argc, char **argv)
             } else if (old == u"PostScreenshotCopyLocation"_s || old == u"2"_s) {
                 general.writeEntry("afterCaptureCopy", true);
                 general.writeEntry("afterCaptureCopyWhat", u"CopyTheFilePath"_s);
+                general.writeEntry("autoSaveImage", true); // a path needs the saved file
             } else {
                 general.writeEntry("afterCaptureCopy", true);
             }
