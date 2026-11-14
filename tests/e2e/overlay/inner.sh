@@ -194,8 +194,9 @@ if [ -n "${TEST_LAST_TOOL:-}" ]; then
   printf '[Annotations]\nannotationToolType=%s\n' "$TEST_LAST_TOOL" >> "$XDG_CONFIG_HOME/ectolensrc"
 fi
 if [ "${SCENARIO:-frame}" = agent ]; then
-  # Settings › Model Context Protocol (MCP): agents on (Hide Private Info's blur stays on, as it starts)
-  printf '[General]\nagentAccess=true\n' > "$XDG_CONFIG_HOME/ectolensrc"
+  # Settings › Model Context Protocol (MCP): agents on (Hide Private Info's blur stays on, as it starts),
+  # and Settings › Private Information's list holding a file name on the terminal
+  printf '[General]\nagentAccess=true\nalwaysHide=budget.ods\n' > "$XDG_CONFIG_HOME/ectolensrc"
 fi
 if [ "${SCENARIO:-frame}" = annotate ] || [ "${SCENARIO:-frame}" = textbox ]; then
   # Save to file checked, so the marked picture can be read back

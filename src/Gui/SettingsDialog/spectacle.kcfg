@@ -93,6 +93,10 @@
         <label>Blur private information (Hide Private Info) on every capture an agent asks for, before the person sends it</label>
         <default>true</default>
     </entry>
+    <entry name="alwaysHide" type="StringList">
+        <label>Names, words and anything else Hide Private Info always blurs, wherever it appears as a whole word</label>
+        <default></default>
+    </entry>
     <entry name="revertSizeAfterward" type="Bool">
         <label>Put a resized window back to its old size after the capture or recording</label>
         <default>true</default>

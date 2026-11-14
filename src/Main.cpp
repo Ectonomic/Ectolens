@@ -170,8 +170,8 @@ int main(int argc, char **argv)
 
     // Ectolens test hook: render a Settings page off-screen into a picture and exit, so the
     // page can be checked without opening a window. ECTOLENS_SETTINGS_SHOT_PAGE picks the page:
-    // recording (the default), sound (Recording, scrolled to its Sound section), appearance or
-    // general. ECTOLENS_SETTINGS_SHOT_HOLD keeps the
+    // recording (the default), sound (Recording, scrolled to its Sound section), appearance,
+    // private (Private Information) or general. ECTOLENS_SETTINGS_SHOT_HOLD keeps the
     // dialog showing that many milliseconds first (the README's film takes it with its frame).
     if (const QString shot = qEnvironmentVariable("ECTOLENS_SETTINGS_SHOT"); !shot.isEmpty()) {
         SpectacleCore::instance();
@@ -179,6 +179,8 @@ int main(int argc, char **argv)
         const QString page = qEnvironmentVariable("ECTOLENS_SETTINGS_SHOT_PAGE");
         if (page == u"appearance"_s) {
             dialog->showAppearancePage();
+        } else if (page == u"private"_s) {
+            dialog->showPrivateInfoPage();
         } else if (page == u"general"_s) {
             // the first page
         } else {

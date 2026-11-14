@@ -41,6 +41,7 @@ target_sources(ectolens PRIVATE
     Gui/ShareServices.cpp
     Gui/SettingsDialog/AppearanceOptionsPage.cpp
     Gui/SettingsDialog/AgentsOptionsPage.cpp
+    Gui/SettingsDialog/PrivateInfoOptionsPage.cpp
     Gui/SettingsDialog/GeneralOptionsPage.cpp
     Gui/SettingsDialog/ImageSaveOptionsPage.cpp
     Gui/SettingsDialog/OcrLanguageSelector.cpp
@@ -57,6 +58,7 @@ target_sources(ectolens PRIVATE
     Main.cpp
     PlasmaVersion.cpp
     PrivateInfo.cpp
+    PrivateInfoSettings.cpp
     Platforms/ImagePlatform.cpp
     Platforms/ImagePlatformKWin.cpp
     Platforms/PlatformLoader.cpp

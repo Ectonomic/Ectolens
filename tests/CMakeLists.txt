@@ -44,6 +44,23 @@ target_compile_options(private_info_test PRIVATE -fexceptions)
 target_compile_definitions(private_info_test PRIVATE ECTOLENS_FONTS_DIR="${PROJECT_SOURCE_DIR}/src/fonts")
 set_tests_properties(private_info_test PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
+# Ectolens: Settings › Private Information's list, from the page's own Add button to the blur
+set(HIDE_LIST_TEST_SRCS
+    HideListTest.cpp
+    ../src/Gui/SettingsDialog/PrivateInfoOptionsPage.cpp
+    ../src/PrivateInfoSettings.cpp
+    ../src/PrivateInfo.cpp
+    ../src/Platforms/VideoPlatform.cpp
+)
+kconfig_add_kcfg_files(HIDE_LIST_TEST_SRCS GENERATE_MOC ${PROJECT_SOURCE_DIR}/src/Gui/SettingsDialog/settings.kcfgc)
+ecm_add_test(
+    ${HIDE_LIST_TEST_SRCS}
+    TEST_NAME "hide_list_test"
+    LINK_LIBRARIES Qt::Test Qt::Widgets Qt::Qml KF6::ConfigCore KF6::ConfigGui KF6::ConfigWidgets KF6::WidgetsAddons KF6::I18n PkgConfig::TESSERACT
+)
+target_compile_options(hide_list_test PRIVATE -fexceptions)
+set_tests_properties(hide_list_test PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
 # Ectolens: the Text and Number marks' look (Ecto green label and badge), drawn and read back
 ecm_add_test(
     AnnotationLookTest.cpp

@@ -33,13 +33,7 @@ static QString clean(const QString &title)
     if (!Settings::agentHidePrivateInfo()) {
         return title;
     }
-    QStringList words = title.split(u' ');
-    for (auto &word : words) {
-        if (PrivateInfo::looksPrivate(word)) {
-            word = u"[hidden]"_s;
-        }
-    }
-    return words.join(u' ');
+    return PrivateInfo::hideInText(title);
 }
 
 QString AgentService::Windows()

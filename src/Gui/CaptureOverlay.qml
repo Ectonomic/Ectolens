@@ -871,7 +871,7 @@ MouseArea {
                     iconName: "view-hidden"
                     iconOnly: true
                     text: i18nc("@action", "Hide Private Info")
-                    toolTipText: i18nc("@info:tooltip", "Hide Private Info: blur email addresses, keys, tokens and home-folder paths")
+                    toolTipText: i18nc("@info:tooltip", "Hide Private Info: blur email addresses, phone numbers, street addresses, keys, tokens, passwords, home-folder paths and your name")
                     enabled: SpectacleCore.ocrAvailable && !CaptureTools.hidingPrivateInfo
                     current: CaptureTools.hidingPrivateInfo
                     onClicked: CaptureTools.hidePrivateInfo(SelectionEditor.selection.rect)

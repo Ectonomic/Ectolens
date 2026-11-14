@@ -830,6 +830,11 @@ if scenario in ('agent', 'agentoff'):
     words = texts('capture_window')
     check('the words it asked for came too', 'notes.md' in words, words[:300])
     check('with the private things blurred: no email address, key or home folder in the words', all(p not in words for p in ('dana.reyes@example.com', 'sk-proj-9fK2', '/home/dana')), words[:300])
+    # Settings › Private Information's list (inner.sh writes budget.ods into it): blurred in the picture
+    # like the rest, so its words leave it out, while the file names beside it stay (without the
+    # list, the same run's words hold budget.ods)
+    check("a word on the person's own hide list is hidden too, and its neighbors are not", 'budget.ods' not in words
+          and 'notes.md' in words and 'slides.key' in words, words[:300])
     # the request pops up in the middle of the screen (the bottom row's line was easy to miss)
     cards = []
     step = None
@@ -932,18 +937,23 @@ if scenario in ('agent', 'agentoff'):
     w5 = texts('capture_adjusted')
     check('after Adjust First the frame was dragged up over the private lines', f5a is not None and f5b is not None and f5b[1] <= f5a[1] - 80, f'{f5a} -> {f5b}')
     # judged on the picture the agent got: the frame now holds the email line, the "$ echo" line and
-    # the key line whole. Each whole line of text is a run of rows with edges in them (a line cut by
-    # the frame's top or bottom is left out); a blurred line keeps only its blur box's soft edge.
+    # the key line whole. Each whole line of text is a run of rows that differ from the background
+    # (a line cut by the frame's top or bottom is left out), judged by the strength of its edges: a
+    # blurred line keeps only soft ones. (Found by edges alone, a blur whose border fell half a
+    # pixel off the frame's edge had none at 40 and went uncounted, 2026-11-14.)
     def line_edges(name):
         lines = []
         img = images(name)
         if img and os.path.exists(img[0].get('file', '')):
             g = Image.open(img[0]['file']).convert('L')
             px = g.load()
+            counts = g.histogram()
+            background = counts.index(max(counts))
             edge = [max(abs(px[x + 1, y] - px[x, y]) for x in range(g.width - 1)) for y in range(g.height)]
+            ink = [max(abs(px[x, y] - background) for x in range(g.width)) >= 24 for y in range(g.height)]
             run = []
-            for y, e in enumerate(edge + [0]):
-                if e >= 40:
+            for y, e in enumerate(ink + [False]):
+                if e:
                     run.append(y)
                 elif run:
                     if run[0] > 0 and run[-1] < g.height - 1:

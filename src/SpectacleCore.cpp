@@ -7,6 +7,7 @@
  */
 
 #include "SpectacleCore.h"
+#include "PrivateInfoSettings.h"
 #include "StartupClock.h"
 #include "Gui/CaptureTools.h"
 #include "CaptureModeModel.h"
@@ -90,6 +91,9 @@ static QList<KNotification *> notifications;
 SpectacleCore::SpectacleCore(QObject *parent)
     : QObject(parent)
 {
+    // Ectolens: what the person listed in Settings › Private Information, blurred from now on
+    PrivateInfoSettings::follow();
+
     // Timer to prevent lots of extra rendering to images
     m_annotationSyncTimer = std::make_unique<QTimer>();
     m_annotationSyncTimer->setInterval(400);

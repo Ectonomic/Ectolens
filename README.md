@@ -50,26 +50,26 @@ section.
 |---|---|---|
 | [Capture or record the same frame](#capture-or-record-the-same-frame) | Recording starts from its own menu, New Recording | **Capture** and **Record** side by side, for the same frame |
 | [Capture or record a window](#capture-or-record-a-window-with-a-click) | Drag a frame around the window | Point at the window and click |
-| [Hiding private information](#hide-private-information) | By hand, with the Blur or Pixelate tool | Found and blurred for you |
-| [Recording quality](#quality-and-frame-rate) | Fixed for each format | Small File, High, Best or your own settings |
+| [Hiding private information](#hide-private-information) | ❌ No: you find it and cover it yourself, with the Blur or Pixelate tool | ✅ Yes: Hide Private Info reads the words in the frame and blurs email addresses, phone numbers, street addresses, keys, tokens, passwords, home-folder paths, your name and the names you add to your own list, with one click, or on its own for an agent's capture |
+| [Recording quality](#quality-and-frame-rate) | One fixed setting per format, set low for WebM and for MP4 through the graphics chip; users found text in its recordings blurred and blocky | Small File, High or Best, each with its size per minute, or your own settings; High keeps text sharp |
 | [Video encoders](#encoders-and-their-settings) | The best H.264 or VP9 encoder it finds | Your pick for MP4: x264, x265, SVT-AV1 or NVENC, or the system's own H.264 where FFmpeg lacks it |
 | [Frame rate](#quality-and-frame-rate) | Up to 60 frames a second | 30, 60, 120 or your screen's own rate |
-| [Pausing a recording](#pause-crash-safe-mp4-and-dropped-frames) | ❌ | ✅ The paused time stays out of the file |
-| [Recordings cut short by a crash](#pause-crash-safe-mp4-and-dropped-frames) | ❌ The MP4 won't play | ✅ The MP4 still plays |
-| [What happens after a capture](#what-a-capture-does-next) | A button for each action, in a row below the frame | Set once in After Capture, so Capture is the only button to press |
-| [Captures for AI agents](#captures-for-ai-agents) | ❌ | ✅ An MCP server; nothing reaches the agent until you press Send |
-| [Text on a capture](#labels-badges-and-text-boxes) | Lines that run on until you break them | Labels, and boxes that wrap the words |
+| [Pausing a recording](#pause-crash-safe-mp4-and-dropped-frames) | ❌ No | ✅ Yes: the paused time stays out of the file |
+| [Recordings cut short by a crash](#pause-crash-safe-mp4-and-dropped-frames) | ❌ No: an MP4 cut short won't play at all. Spectacle records WebM unless you pick MP4, and a WebM keeps what was written | ✅ Yes: an MP4 cut short still plays. Ectolens records MP4 to start with, since only MP4 takes every encoder and quality choice |
+| [What happens after a capture](#what-a-capture-does-next) | Three rows of buttons, with one below the frame for each thing a capture can do: save, copy, export and more | Two rows: what a capture does is set once in After Capture, so Capture is the only button to press |
+| [Captures for AI agents](#captures-for-ai-agents) | ❌ No | ✅ Yes: an agent such as Claude Code can ask for a picture, a recording or the words on screen, through an MCP server that's off until you turn it on. Each request opens in your overlay with the agent's reason, a picture's private information blurred, and nothing reaches the agent until you press Send |
+| [Text on a capture](#labels-badges-and-text-boxes) | A label whose line runs on until you break it | A label from a click, or a box from a drag: its words wrap as you type and wrap again when you resize it |
 | [Undo and Redo](#undo-and-redo) | Marks only | Marks, plus the frame's moves and resizes |
 | [Recording sound](#separate-sound-tracks) | System sound and microphone mixed into one track | The mixed track, plus a track for each if you want |
-| [Capture sizes](#exact-capture-sizes) | ❌ | ✅ Type a size or pick one; a framed window is resized to fit |
-| [Color picker, ruler and pinning](#pick-a-color-measure-read-a-qr-code-pin) | ❌ | ✅ Pick Color, Measure and Pin |
+| [Capture sizes](#exact-capture-sizes) | ❌ No | ✅ Yes: type a width and height or pick one (Full HD, QHD, square, phone and more), and Ectolens resizes the window you're capturing to exactly that size, then puts it back |
+| [Color picker, ruler and pinning](#pick-a-color-measure-read-a-qr-code-pin) | ❌ No | ✅ Yes: Pick Color, Measure and Pin |
 | [Reading QR codes](#pick-a-color-measure-read-a-qr-code-pin) | In the window, after a capture | In the overlay, while you frame |
-| [Dropped frames](#pause-crash-safe-mp4-and-dropped-frames) | ❌ Not shown | ✅ Counted on the recording bar |
+| [Dropped frames](#pause-crash-safe-mp4-and-dropped-frames) | ❌ No | ✅ Yes: counted on the recording bar |
 | [Where a tool's options open](#labels-badges-and-text-boxes) | In a bar starting at the left end of the tool row | Right above the tool's own button |
 | [Text alignment](#labels-badges-and-text-boxes) | Always left | Left, center or right; in a box, also top, middle or bottom |
-| [Color and font pickers](#colors-and-fonts) | Qt's standard dialogs | Ectolens's own menus, with each font shown in its own face |
+| [Color and font pickers](#colors-and-fonts) | Qt's color and font dialogs, separate windows that open over your work | Menus in the tool's own options: twelve colors and a picker for any other in one menu, and every font shown in its own face with a search |
 | [Sharing](#what-a-capture-does-next) | Every share service KDE has, including public Imgur uploads | Only the services that work on your computer |
-| [Appearance](#ectos-look-or-kdes) | KDE's style | Ecto's style or KDE's |
+| [Appearance](#ectos-look-or-kdes) | Your KDE colors and fonts | Ecto's look to start with: a dark overlay in the Geist typeface with one accent color. Or your KDE colors and fonts, with any accent color and as much dimming around the frame as you choose |
 
 The pictures below with a divider sweeping across them show the same moment
 in Spectacle 6.7.5, the version Plasma 6.7 ships, and in Ectolens, filmed on
@@ -155,8 +155,13 @@ Record's arrow holds the choices for the next recording. What to include
 (system sound, the microphone and the pointer) and the format (MP4, WebM, GIF
 or WebP) are Spectacle's own choices. The quality and the frame rate are new.
 
-Spectacle records each format at one fixed quality. In Ectolens, **Small
-File**, **High** and **Best** each say what they cost: with x264, a minute of
+Spectacle records each format at one fixed setting, and two of them are low:
+WebM at a VP9 quality level of 31 up to 1080p, and MP4 through the graphics
+chip at a quantizer of 35 (on both scales, a lower number is better). Users
+found text in Spectacle's recordings blurred and blocky, and traced it to the
+VP9 setting, in [KDE bug 476186](https://bugs.kde.org/show_bug.cgi?id=476186).
+In Ectolens,
+**Small File**, **High** and **Best** each say what they cost: with x264, a minute of
 a full 3440×1440 screen takes about 10, 27 or 28 MB. High keeps text sharp
 and plays everywhere. Best keeps every color detail for editing later, though
 Firefox and some phones can't play it. Spectacle records at up to 60 frames a
@@ -199,11 +204,15 @@ video editor can change one without the other.
 
 - **Pause.** Spectacle can't pause a recording. Ectolens's Pause leaves the
   paused time, and the sound during it, out of the file.
-- **A crash can't ruin an MP4.** In Spectacle, an MP4 cut short by a crash
-  won't play. Ectolens writes MP4 files in pieces as it records and turns them
-  into an ordinary file at the end, as OBS Studio's hybrid MP4 does, so a
-  recording cut short by a crash still plays. With an FFmpeg older than 7.1
-  the file keeps its pieces.
+- **A crash can't ruin an MP4.** An ordinary MP4 keeps its index at the end,
+  so in Spectacle an MP4 cut short by a crash won't play at all. Ectolens
+  writes MP4 files in pieces as it records and turns them into an ordinary
+  file at the end, as OBS Studio's hybrid MP4 does, so a recording cut short
+  by a crash still plays. With an FFmpeg older than 7.1 the file keeps its
+  pieces. This matters because Ectolens records MP4 to start with, since only
+  MP4 takes every encoder and quality choice. Spectacle records WebM unless
+  you pick MP4, and a WebM or a GIF cut short keeps what was written; an
+  animated WebP cut short won't play in either app.
 - **Dropped frames are counted** on the recording bar, so you know at once if
   the computer fell behind. Spectacle doesn't show them.
 - **60 frames a second stays 60.** KPipeWire dropped any frame that arrived a
@@ -272,9 +281,27 @@ After Capture did.
 
 Spectacle's Blur and Pixelate tools hide things by hand. **Hide Private
 Info** finds them for you: it reads the words in the frame with Tesseract,
-the text recognition Spectacle's Extract Text uses, and blurs email
-addresses, home-folder paths, and keys and tokens, such as OpenAI, GitHub,
-GitLab, Slack, AWS and Google keys.
+the text recognition Spectacle's Extract Text uses, and blurs what's private:
+
+- email addresses, phone numbers and street addresses
+- keys and tokens, such as OpenAI, GitHub, GitLab, Slack, AWS and Google
+  keys, and any value given as a password, token or secret
+- home-folder paths and shell prompts, which name your account and computer
+- your own name, login and computer name, as your account gives them
+- anything you add in Settings › Private Information: the people you work
+  with, clients, places, a project's code name
+
+It reads each line whole too, so a phone number or an address the reader
+splits into words is still found. It reads small text a second time,
+larger, and a dark screen turned light, which is how the text reader reads
+best. Each blur is an ordinary Blur mark: you see them all before you
+capture, and Undo takes one off. Press Hide Private Info for your own
+captures; a capture an AI agent asks for gets it on its own.
+
+It finds only what it can read and what fits these patterns or your list.
+Other people's names aren't found unless you add them. Addresses are found
+in the forms used across North America, Europe, Australia, Brazil and Japan,
+not yet in every country's. A recording is never blurred.
 
 <img src="docs/pictures/readme-hide-private.webp" width="100%" alt="A framed terminal showing an email address, an API key and a home folder's path. The pointer rests on Hide Private Info, whose tooltip says what it blurs; a click blurs all three, and a note says six private items were blurred">
 
@@ -318,9 +345,10 @@ what it gets:
   reason and a preview of exactly what the agent would get. Press **Send**,
   **Don't Send**, or **Adjust First** to move the frame or mark the picture up
   before you send it. Nothing reaches the agent before that.
-- **Private information is blurred first.** In a picture, email addresses,
-  keys, tokens and home-folder paths are blurred before you decide, and the
-  request says how many it found. When the agent needs to see them, uncheck
+- **Private information is blurred first.** In a picture, everything Hide
+  Private Info finds (email addresses, phone numbers, street addresses, keys,
+  passwords, home-folder paths and your name) is blurred before you decide,
+  and the request says how many it found. When the agent needs to see them, uncheck
   **Blur private information** in the request: the blurs come off the preview
   and the picture for that request only. If you move or enlarge the frame
   with Adjust First, Ectolens reads the frame again and blurs what's private

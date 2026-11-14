@@ -28,6 +28,7 @@ public:
     void showRecordingPage();
     /// Ectolens: open on Settings › Appearance or Shortcuts
     void showAppearancePage();
+    void showPrivateInfoPage();
     void showShortcutsPage();
 
 protected:
@@ -50,6 +51,7 @@ private:
     AppearanceOptionsPage *const m_appearancePage;
     KPageWidgetItem *m_appearanceItem = nullptr;
     KPageWidgetItem *m_shortcutsItem = nullptr;
+    KPageWidgetItem *m_privateInfoItem = nullptr;
 };
 
 #endif // SETTINGSDIALOG_H

@@ -44,7 +44,7 @@ AgentsOptionsPage::AgentsOptionsPage(QWidget *parent)
     hide->setObjectName(u"kcfg_agentHidePrivateInfo"_s);
     form->addRow(i18nc("@label", "Privacy:"), hide);
     form->addRow(QString(),
-                 note(i18nc("@info", "Email addresses, keys, tokens and home-folder paths, found as Hide Private Info finds them. Window titles an agent lists are blurred the same way."),
+                 note(i18nc("@info", "Email addresses, phone numbers, street addresses, keys, tokens, passwords, home-folder paths and your name, found as Hide Private Info finds them. Window titles an agent lists are blurred the same way."),
                       this));
 
     const QString server = QDir(QCoreApplication::applicationDirPath()).filePath(u"ectolens-mcp"_s);

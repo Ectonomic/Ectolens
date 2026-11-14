@@ -10,6 +10,7 @@
 
 #include "AppearanceOptionsPage.h"
 #include "AgentsOptionsPage.h"
+#include "PrivateInfoOptionsPage.h"
 #include "GeneralOptionsPage.h"
 #include "ImageSaveOptionsPage.h"
 #include "OcrLanguageSelector.h"
@@ -42,6 +43,7 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     addPage(m_imagesPage, Settings::self(), i18nc("Settings category", "Image Saving"), "image-x-generic"_L1);
     m_recordingItem = addPage(m_videosPage, Settings::self(), i18nc("Settings category", "Recording"), "camera-video"_L1);
     m_appearanceItem = addPage(m_appearancePage, Settings::self(), i18nc("Settings category", "Appearance"), "preferences-desktop-color"_L1);
+    m_privateInfoItem = addPage(new PrivateInfoOptionsPage(this), Settings::self(), i18nc("Settings category", "Private Information"), "view-private"_L1);
     addPage(new AgentsOptionsPage(this), Settings::self(), i18nc("Settings category", "Model Context Protocol (MCP)"), "preferences-plugin"_L1);
     m_shortcutsItem = addPage(m_shortcutsPage, i18nc("Settings category", "Shortcuts"), "preferences-desktop-keyboard"_L1);
     connect(m_shortcutsPage, &ShortcutsOptionsPage::shortCutsChanged, this, [this] {
@@ -64,6 +66,11 @@ void SettingsDialog::showRecordingPage()
 void SettingsDialog::showAppearancePage()
 {
     setCurrentPage(m_appearanceItem);
+}
+
+void SettingsDialog::showPrivateInfoPage()
+{
+    setCurrentPage(m_privateInfoItem);
 }
 
 void SettingsDialog::showShortcutsPage()

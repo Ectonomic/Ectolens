@@ -540,17 +540,7 @@ QString CaptureTools::readText(const QImage &image, bool hidePrivate)
     std::unique_ptr<char[]> text(api.GetUTF8Text());
     QString words = text ? QString::fromUtf8(text.get()).trimmed() : QString();
     if (hidePrivate) {
-        QStringList lines = words.split(u'\n');
-        for (auto &line : lines) {
-            QStringList parts = line.split(u' ');
-            for (auto &part : parts) {
-                if (looksPrivate(part)) {
-                    part = u"[hidden]"_s;
-                }
-            }
-            line = parts.join(u' ');
-        }
-        words = lines.join(u'\n');
+        words = PrivateInfo::hideInText(words);
     }
     return words;
 }
