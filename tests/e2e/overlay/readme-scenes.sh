@@ -7,7 +7,7 @@
 # pixels, tools/readme-pictures.sh sets it), so the pictures stay sharp on a dense display.
 
 # the scenes, in the order the README shows them
-SCENES="hero marks private size tools menus window light ectolook kdelook settings spectacle agent"
+SCENES="hero undo marks align private size tools menus window light ectolook kdelook settings spectacle agent"
 
 README_SCENE=${SCENARIO#readme-}
 R_PX=1180; R_PY=660   # where the pointer is
@@ -76,7 +76,7 @@ readme_setup() {
     private|agent)
       printf '%s\n' '$ git config user.email' 'dana.reyes@example.com' '$ echo $OPENAI_API_KEY' \
         'sk-proj-9fK2xQ7mL4vR8tY1wZ3bN6cD5hJ0' '$ pwd' '/home/dana/projects/launch-notes' '$ ls' 'notes.md  slides.key  budget.ods' '$ ' > "$W/term.txt";;
-    marks|window|light|ectolook|kdelook|spectacle*)
+    marks|align|undo|window|light|ectolook|kdelook|spectacle*)
       printf '%s\n' '$ git clone --recurse-submodules \' '      https://github.com/Ectonomic/Ectolens.git' '$ cd Ectolens' \
         '$ cmake -S 3rdparty/kpipewire -B build/kpipewire -G Ninja' '$ cmake --build build/kpipewire && cmake --install build/kpipewire' \
         '$ cmake -S . -B build/spectacle -G Ninja' '$ cmake --build build/spectacle' '$ ' > "$W/term.txt";;
@@ -165,6 +165,10 @@ readme_script() {
     hero) SCRIPT="mark:start;mark:pointing;locate:record;mark:framed;wait:1400;locate:stop;mark:recording;wait:1800;mark:window";;
     # numbered steps, a label and a text box, with the real pointer and keys
     marks) SCRIPT="frame:$FRAME;wait:700;locate:numberTool;locate:textTool;locate:selectTool;mark:framed";;
+    # the frame moved and resized by real drags, then Undo pressed twice: it goes back, step by step
+    undo) SCRIPT="frame:$FRAME;wait:700;mark:framed;wait:400;framerect;mark:moved;wait:500;locate:undoButton;mark:undo1;wait:500;locate:undoButton;mark:undo2";;
+    # a text box, then the Text tool's Align menu: Center, then Middle
+    align) SCRIPT="frame:$FRAME;wait:700;locate:textTool;locate:selectTool;mark:framed;wait:400;locate:optionAlign;mark:typed;wait:700;locate:align-4;mark:alignmenu;wait:600;locate:optionAlign;mark:centered;wait:700;locate:align-128;mark:vmenu";;
     private) SCRIPT="frame:$FRAME;wait:700;locate:hidePrivateInfo;mark:framed";;
     # the frame label's sizes: Full HD picked, the window made that size
     size) SCRIPT="mark:start;mark:pointing;locate:frameLabel;mark:framed;locate:sizePreset1920x1080;mark:menu";;
@@ -236,6 +240,26 @@ readme_step() {
       glide 112 400 650; hold 200; drag_to 452 448 700; hold 400
       type_text "KPipeWire goes into build/prefix, not over your system's copy."; hold 800
       glide_to selectTool 700; hold 150; press; hold 2000; film_end;;
+
+    undo:framed)
+      feed "move 560 610"; R_PX=560; R_PY=610; film start undo 25; hold 600; film_mark framed
+      glide 400 330 650; hold 250; drag_to 600 390 800; hold 700;;
+    undo:moved)
+      read -r _ RX RY RW RH _ < <(grep "^ECTOLENS-FRAME " "$OUT/ectolens.log" | tail -1)
+      glide $((RX + RW)) $((RY + RH)) 600; hold 250; drag_to $((RX + RW + 90)) $((RY + RH + 50)) 700; hold 800; film_mark changed;;
+    undo:undo1) glide_to undoButton 700; hold 200; press; hold 1000;;
+    undo:undo2) glide_to undoButton 500; hold 200; press; hold 1800; film_end;;
+
+    align:framed)
+      feed "move 560 610"; R_PX=560; R_PY=610; film start align 25; hold 400
+      glide_to textTool 650; hold 150; press; hold 450
+      glide 112 392 600; hold 200; drag_to 452 520 700; hold 400
+      type_text "Run these in order, top to bottom."; hold 700;;
+    align:typed)     glide_to optionAlign 650; hold 150; press; hold 1000; film_mark alignmenu;;
+    align:alignmenu) glide_to align-4 500; hold 200; press; hold 1100; film_mark centered;;
+    align:centered)  glide_to optionAlign 500; hold 150; press; hold 600;;
+    align:vmenu)     glide_to align-128 500; hold 200; press; hold 1100; film_mark middle
+                     glide_to selectTool 700; hold 150; press; hold 1800; film_end;;
 
     private:framed)
       feed "move 520 500"; R_PX=520; R_PY=500; film start private 25; hold 700

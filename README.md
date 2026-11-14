@@ -51,6 +51,7 @@ Ectolens started from it. Each row links to its section.
 | [Undo and Redo in the overlay](#take-a-window-with-a-click) | The marks | The marks and the frame's moves and resizes, in order |
 | [A picture or a video of the same frame](#capture-or-record-the-same-frame) | Switch the overlay to a recording mode first | **Capture** and **Record** side by side |
 | [What a capture does next](#what-a-capture-does-next) | A button for each, in a row below the frame | Set once in After Capture, so Capture is the one button |
+| [Share](#what-a-capture-does-next) | Every share service KDE has, public Imgur uploads included | Only the services that can work on your computer |
 | [Recording quality](#quality-and-frame-rate) | Fixed for each format | Small File, High, Best or your own settings |
 | [Frame rate](#quality-and-frame-rate) | Up to 60 per second | 30, 60, 120 or your screen's own |
 | [Encoders](#encoders-and-their-settings) | The best H.264 or VP9 encoder found | For MP4: x264, x265, SVT-AV1 or NVENC, your pick, or the system's own H.264 where FFmpeg lacks it |
@@ -60,6 +61,7 @@ Ectolens started from it. Each row links to its section.
 | [Dropped frames](#pause-crash-safe-mp4-and-dropped-frames) | Not shown | Counted on the recording bar |
 | [A marking tool's options](#labels-badges-and-text-boxes) | A bar from the left end of the tool row | A row right above the tool's own button |
 | [Words on a capture](#labels-badges-and-text-boxes) | Lines you break yourself | Labels, and boxes whose words wrap |
+| [Aligning words](#labels-badges-and-text-boxes) | Always at the left | Left, centered or right; in a box, top, middle or bottom |
 | [Colors and fonts for marks](#colors-and-fonts) | Qt's color and font dialogs | Menus of their own, with fonts shown in their own faces |
 | [Blur private information](#blur-whats-private) | By hand, with Blur or Pixelate | Found and blurred for you |
 | [Exact capture sizes](#exact-sizes) | No | Typed or picked, with the window resized to fit |
@@ -87,6 +89,8 @@ every screen, and a drag still frames any area.
 Undo and Redo cover the frame as well as your marks: they take back its moves
 and resizes in the order you made them. In Spectacle they take back only the
 marks.
+
+<img src="docs/pictures/readme-frame-undo.webp" width="100%" alt="The terminal framed. The frame is dragged over the editor, then its corner is pulled out to make it larger. Undo on the toolbar, clicked twice, takes back the resize and then the move, and the frame is back on the terminal">
 
 ### Capture or record the same frame
 
@@ -117,13 +121,24 @@ tools below.
 What a capture does next is set once, in **After Capture** on Capture's
 arrow, so Capture is the one button to press. The choices are to copy the
 picture or its file's path, save it to a folder or ask where each time, show
-it in its folder, open it in an app, and share it. Choose any mix, and
+it in its folder, open it in an app, and share it. A file path needs a saved
+file, so picking File Path checks Save to file too. Choose any mix, and
 Ectolens does all of them each time you press Capture or Enter. To start
 with, After Capture copies the picture, or follows Spectacle's copy setting
 if you had one. A recording is always saved, in your Videos folder, and opens
 in the Ectolens window when Open with is set to Ectolens.
 
 <img src="docs/pictures/readme-after-capture.webp" width="100%" alt="The After Capture menu over a framed terminal: Copy to clipboard as the image or its file path, checked, Save to file in Screenshots or ask where each time, Show in folder, Open with Ectolens, and Share, asking each time">
+
+**Share** lists only the services that can work on your computer. Spectacle
+lists every share service KDE has. Ectolens leaves out Upload Publicly to
+Imgur, which posts the picture for anyone to see without asking first and
+whose uploads fail today ([KDE bug 452470](https://bugs.kde.org/show_bug.cgi?id=452470),
+[KDE bug 515955](https://bugs.kde.org/show_bug.cgi?id=515955)), and Upload to
+YouTube, whose Google sign-in Google blocks. Copy to clipboard and Save as are
+left out too, since After Capture has rows of its own for them. Send via Email
+is listed only when an email app is set to open email links, and Send to Device
+only when KDE Connect has a paired device.
 
 ## Recording
 
@@ -217,6 +232,14 @@ you type, and its handles resize it and wrap them again. A click without a
 drag still makes a plain label.
 
 <img src="docs/pictures/readme-text-box.webp" width="100%" alt="A box dragged out with the Text tool under the build commands, and a sentence typed into it, wrapping onto a second line: KPipeWire goes into build/prefix, not over your system's copy">
+
+In Spectacle, words always start at the left. In Ectolens, the Align menu in
+the Text tool's options puts them at the left, center or right, and in a box,
+at its top, middle or bottom. Hold Shift while you drag to draw a square box,
+or Ctrl to draw it out from its center. While you write, Ctrl+Z takes back
+your latest step, typing or a resize, and Ctrl+Shift+Z puts it back.
+
+<img src="docs/pictures/readme-text-align.webp" width="100%" alt="A text box drawn under the build commands with the words Run these in order, top to bottom at its top left. The Align menu opens from the Text tool's options: Left, Center and Right, then Top, Middle and Bottom for a box. Center moves the words to the middle of the line, and Middle moves them down to the middle of the box">
 
 ### Colors and fonts
 

@@ -25,6 +25,8 @@ FONT = os.path.join(HERE, '..', 'src', 'fonts', 'Geist-Medium.ttf')
 CUTS = {
     'readme-hero': {'scene': 'hero', 'kind': 'moving', 'area': (0, 0, 1280, 720), 'from': 0.4, 'to': None, 'width': 1600,
                     'keys': [('printscreen', 'Print Screen')]},
+    'readme-frame-undo': {'scene': 'undo', 'kind': 'moving', 'area': (0, 0, 1280, 720), 'from': 0, 'to': None, 'width': 1600},
+    'readme-text-align': {'scene': 'align', 'kind': 'moving', 'area': (10, 20, 800, 594), 'from': 0, 'to': None, 'width': 1600},
     'readme-after-capture': {'scene': 'menus', 'kind': 'still', 'area': (10, 44, 760, 570), 'at': ('aftermenu', 0), 'width': 1520},
     'readme-record-menu': {'scene': 'menus', 'kind': 'still', 'area': (10, 44, 760, 570), 'at': ('recordmenu', 0), 'width': 1520},
     'readme-recording-settings': {'scene': 'settings', 'kind': 'still', 'area': (140, 6, 1000, 708), 'at': ('recording', 0), 'width': 1600},
