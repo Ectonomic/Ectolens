@@ -5,6 +5,7 @@
 
 #include "traits.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cmath>
 
@@ -383,7 +384,8 @@ QPainterPath Traits::createStrokePath(const OptTuple &traits, const QPen *otherP
     }
     const auto &pen = otherPen ? *otherPen : stroke->pen;
     QPainterPathStroker stroker(pen);
-    auto minPath = Traits::minPath(geometry->path); // Will always have at least 2 points.
+    // Ectolens: a box's rounded corners (shapePath)
+    auto minPath = Traits::minPath(shapePath(traits)); // Will always have at least 2 points.
     if (auto &arrow = std::get<Arrow::Opt>(traits)) {
         const int size = minPath.elementCount();
         const QLineF lastLine{minPath.elementAt(size - 2), minPath.elementAt(size - 1)};
@@ -400,7 +402,8 @@ QPainterPath Traits::createInteractivePath(const OptTuple &traits)
     auto &stroke = std::get<Stroke::Opt>(traits);
     QPainterPath mousePath;
     if (geometry && geometry->isValid()) {
-        mousePath = geometry->path;
+        // Ectolens: a box's rounded corners (shapePath)
+        mousePath = shapePath(traits);
         // Ectolens: all of a label's box takes clicks, and all of a drawn text box with no label
         auto &text = std::get<Text::Opt>(traits);
         if (isLabel(traits)) {
@@ -729,7 +732,96 @@ QPainterPath Traits::fillPath(const OptTuple &traits)
         path.addRoundedRect(textOutsideRect(text->font, geometry->path.boundingRect()), radius, radius);
         return path;
     }
-    return geometry->path;
+    // Ectolens: a box's rounded corners
+    return shapePath(traits);
+}
+
+QPainterPath Traits::shapePath(const OptTuple &traits)
+{
+    auto &geometry = std::get<Geometry::Opt>(traits);
+    if (!geometry) {
+        return {};
+    }
+    if (geometry->cornerRadius <= 0) {
+        return geometry->path;
+    }
+    return roundedCorners(geometry->path, geometry->cornerRadius);
+}
+
+bool Traits::takesCorners(const OptTuple &traits)
+{
+    auto &geometry = std::get<Geometry::Opt>(traits);
+    auto &fill = std::get<Fill::Opt>(traits);
+    if (!geometry || !fill || fill->index() != Fill::Brush || std::get<Text::Opt>(traits) || std::get<Arrow::Opt>(traits)
+        || std::get<Highlight::Opt>(traits)) {
+        return false;
+    }
+    // rounding it changes it: a shape of three or more straight lines
+    return roundedCorners(geometry->path, 1) != geometry->path;
+}
+
+QPainterPath Traits::roundedCorners(const QPainterPath &path, qreal radius)
+{
+    if (radius <= 0) {
+        return path;
+    }
+    // the corners of the first shape: a MoveTo, then only LineTos (a later MoveTo, such as the
+    // start point a drawn box keeps at its end, ends it)
+    QList<QPointF> corners;
+    for (int i = 0; i < path.elementCount(); ++i) {
+        const auto element = path.elementAt(i);
+        if (i == 0) {
+            if (!element.isMoveTo()) {
+                return path;
+            }
+        } else if (element.isMoveTo()) {
+            break;
+        } else if (!element.isLineTo()) {
+            return path;
+        }
+        const QPointF point = element;
+        if (corners.isEmpty() || point != corners.last()) {
+            corners << point;
+        }
+    }
+    if (corners.size() > 1 && corners.first() == corners.last()) {
+        corners.removeLast();
+    }
+    const qsizetype n = corners.size();
+    if (n < 3) {
+        return path;
+    }
+    QPainterPath rounded;
+    rounded.setFillRule(path.fillRule());
+    for (qsizetype i = 0; i < n; ++i) {
+        const QPointF corner = corners[i];
+        const QPointF toPrevious = corners[(i + n - 1) % n] - corner;
+        const QPointF toNext = corners[(i + 1) % n] - corner;
+        const qreal previousLength = std::hypot(toPrevious.x(), toPrevious.y());
+        const qreal nextLength = std::hypot(toNext.x(), toNext.y());
+        // the angle inside the corner
+        const qreal cosine = std::clamp(QPointF::dotProduct(toPrevious, toNext) / (previousLength * nextLength), -1.0, 1.0);
+        const qreal angle = std::acos(cosine);
+        if (angle < 1e-6 || M_PI - angle < 1e-6) {
+            // a spike or a straight line: nothing to round
+            i == 0 ? rounded.moveTo(corner) : rounded.lineTo(corner);
+            continue;
+        }
+        // the arc meets each edge this far from the corner, at most half of the shorter edge
+        const qreal halfTangent = std::tan(angle / 2);
+        const qreal reach = std::min(radius / halfTangent, std::min(previousLength, nextLength) / 2);
+        const qreal arcRadius = reach * halfTangent;
+        const QPointF alongPrevious = toPrevious / previousLength;
+        const QPointF alongNext = toNext / nextLength;
+        const QPointF start = corner + alongPrevious * reach;
+        const QPointF end = corner + alongNext * reach;
+        // a cubic as close to a circle's arc as cubics come (4/3·tan(sweep/4) of the radius)
+        const qreal handle = 4.0 / 3.0 * std::tan((M_PI - angle) / 4) * arcRadius;
+        i == 0 ? rounded.moveTo(start) : rounded.lineTo(start);
+        rounded.cubicTo(start - alongPrevious * handle, end - alongNext * handle, end);
+    }
+    rounded.closeSubpath();
+    return rounded;
 }
 
 QSizeF Traits::textBoxMinimumSize(const QFont &font)

@@ -14,6 +14,11 @@
  *   keeps its drawn size, growing down only so no words are hidden; a short drag is a click;
  * - its handles resize it and the words rewrap (undo puts it back); a click's label becomes a box;
  * - the painted lines break where Qt Quick's TextEdit (the editing box, wrapMode Wrap) breaks them.
+ * Rounded corners for the Rectangle tool (Corners in its options):
+ * - a box drawn with a corner radius is cut round at its corners, its fill, outline and shadow
+ *   alike, and stays round (not stretched) when it is resized; a picked box offers Corners, an
+ *   ellipse or a blur does not; a picked box's radius changes as one step to undo; the click area
+ *   follows the round corner.
  * The settings live in a throwaway config (test mode), so the defaults are the defaults.
  */
 #include <KQuickImageEditor/AnnotationDocument>
@@ -123,6 +128,7 @@ private Q_SLOTS:
     void shiftAndCtrlShapeTheBox();
     void labelPaddingTakesThePress();
     void typingStaysQuickWithManyBoxes();
+    void boxCorners();
 
 private:
     std::unique_ptr<AnnotationDocument> document(const QColor &base, const QSize &size = {240, 140});
@@ -1591,5 +1597,147 @@ void AnnotationLookTest::undoFollowsWhatHappenedLast()
 }
 
 QTEST_MAIN(AnnotationLookTest)
+
+void AnnotationLookTest::boxCorners()
+{
+    const QColor red(220, 40, 40);
+    // a box from `from` to `to`: red fill, no outline, no shadow, with these corners; deselected
+    auto drawRect = [&](AnnotationDocument *doc, QPointF from, QPointF to, int corners) {
+        auto tool = doc->tool();
+        tool->setType(AnnotationTool::RectangleTool);
+        tool->setFillColor(red);
+        tool->setStrokeWidth(0);
+        tool->setShadow(false);
+        tool->setCornerRadius(corners);
+        doc->beginItem(from);
+        doc->continueItem(to);
+        doc->finishItem();
+    };
+    auto isRed = [&](const QImage &image, int x, int y) {
+        return near(image.pixelColor(x, y), red, 20);
+    };
+
+    // the option: the Rectangle tool's alone, square to start, kept when the tool comes back
+    {
+        auto doc = document(Qt::white);
+        auto tool = doc->tool();
+        tool->setType(AnnotationTool::RectangleTool);
+        QVERIFY(tool->options().testFlag(AnnotationTool::CornerOption));
+        QCOMPARE(tool->cornerRadius(), 0);
+        QSignalSpy changed(tool, &AnnotationTool::cornerRadiusChanged);
+        tool->setCornerRadius(16);
+        QCOMPARE(changed.count(), 1);
+        tool->setType(AnnotationTool::EllipseTool);
+        QVERIFY(!tool->options().testFlag(AnnotationTool::CornerOption));
+        QCOMPARE(tool->cornerRadius(), 0);
+        tool->setCornerRadius(8);
+        tool->setType(AnnotationTool::RectangleTool);
+        QCOMPARE(tool->cornerRadius(), 16);
+        tool->setCornerRadius(100000);
+        QCOMPARE(tool->cornerRadius(), Traits::maximumCornerRadius);
+        tool->setCornerRadius(-4);
+        QCOMPARE(tool->cornerRadius(), 0);
+    }
+
+    // square: the corner pixel is the box's
+    {
+        auto doc = document(Qt::white);
+        drawRect(doc.get(), {60, 20}, {120, 80}, 0);
+        doc->deselectItem();
+        const QImage image = doc->renderToImage();
+        QVERIFY2(isRed(image, 61, 21), "a square box fills its corner");
+    }
+
+    // rounded at 16: the corner is cut on a circle around (76, 36); the edges and middle are the box's
+    auto doc = document(Qt::white);
+    drawRect(doc.get(), {60, 20}, {120, 80}, 16);
+    auto item = doc->selectedItemWrapper();
+    QVERIFY(item->options().testFlag(AnnotationTool::CornerOption));
+    QCOMPARE(item->cornerRadius(), 16);
+    doc->deselectItem();
+    {
+        const QImage image = doc->renderToImage();
+        save(image, u"corners-16"_s);
+        for (const QPoint corner : {QPoint(61, 21), QPoint(118, 21), QPoint(61, 78), QPoint(118, 78)}) {
+            QVERIFY2(!isRed(image, corner.x(), corner.y()), qPrintable(u"corner pixel %1,%2 is cut"_s.arg(corner.x()).arg(corner.y())));
+        }
+        // 18 from the arc's center is outside it, 13 inside
+        QVERIFY2(!isRed(image, 63, 23), "outside the arc");
+        QVERIFY2(isRed(image, 67, 27), "inside the arc");
+        QVERIFY2(isRed(image, 90, 21) && isRed(image, 61, 50) && isRed(image, 90, 50), "the edges and the middle are the box's");
+    }
+
+    // resized twice as wide: the corners stay round (circular, radius 16), not stretched
+    doc->selectItem(QRectF(90, 50, 0, 0));
+    item = doc->selectedItemWrapper();
+    QVERIFY(item->hasSelection());
+    QMatrix4x4 wider;
+    wider.scale(2, 1);
+    item->applyTransform(wider);
+    QVERIFY(item->commitChanges());
+    const int radiusAfterResize = item->cornerRadius();
+    doc->deselectItem();
+    {
+        const QImage image = doc->renderToImage();
+        save(image, u"corners-wider"_s);
+        // the box is now 30..150 across; a circle of 16 around (46, 36) holds (36, 26), a stretched
+        // corner (32 across, 16 down, around (62, 36)) would not
+        QVERIFY2(isRed(image, 36, 26), "the resized corner is still a circle's");
+        QVERIFY2(!isRed(image, 33, 23), "and still cut");
+        QVERIFY2(isRed(image, 140, 50), "the box grew");
+    }
+    QCOMPARE(radiusAfterResize, 16);
+
+    // the click area follows the corner: a press in the cut corner misses, one inside the arc takes it
+    doc->tool()->setType(AnnotationTool::SelectTool);
+    doc->selectItem(QRectF(31, 21, 0, 0));
+    QVERIFY2(!doc->selectedItemWrapper()->hasSelection(), "a press in the cut corner takes nothing");
+    doc->selectItem(QRectF(38, 28, 0, 0));
+    item = doc->selectedItemWrapper();
+    QVERIFY2(item->hasSelection(), "a press inside the round corner takes the box");
+    QVERIFY2(item->options().testFlag(AnnotationTool::CornerOption), "a picked box offers Corners");
+
+    // a picked box's corners change as one step: square, then Undo brings the round corners back
+    item->setCornerRadius(0);
+    QVERIFY(item->commitChanges());
+    doc->deselectItem();
+    QVERIFY2(isRed(doc->renderToImage(), 31, 21), "made square");
+    doc->undo();
+    doc->deselectItem();
+    QVERIFY2(!isRed(doc->renderToImage(), 31, 21), "Undo rounds it again");
+
+    // an outline and a shadow follow the corners: the outline's pixel at the cut corner stays clear
+    {
+        auto outlined = document(Qt::white);
+        auto tool = outlined->tool();
+        tool->setType(AnnotationTool::RectangleTool);
+        tool->setFillColor(Qt::transparent);
+        tool->setStrokeColor(red);
+        tool->setStrokeWidth(2);
+        tool->setShadow(true);
+        tool->setCornerRadius(16);
+        outlined->beginItem({60, 20});
+        outlined->continueItem({120, 80});
+        outlined->finishItem();
+        outlined->deselectItem();
+        const QImage image = outlined->renderToImage();
+        save(image, u"corners-outline"_s);
+        QVERIFY2(!near(image.pixelColor(60, 20), red, 60) && luma(image.pixelColor(60, 20)) > 200, "nothing drawn at the cut corner, no shadow either");
+        QVERIFY2(isRed(image, 90, 20), "the outline along the top");
+        // the outline on the arc, 16 from its center at 45 degrees
+        // (the pixel whose center the arc crosses)
+        QVERIFY2(isRed(image, int(std::floor(76 - 16 / std::sqrt(2.0))), int(std::floor(36 - 16 / std::sqrt(2.0)))), "the outline follows the arc");
+    }
+
+    // an ellipse and a blur never offer Corners
+    for (const auto type : {AnnotationTool::EllipseTool, AnnotationTool::BlurTool}) {
+        auto other = document(Qt::white);
+        other->tool()->setType(type);
+        other->beginItem({60, 20});
+        other->continueItem({120, 80});
+        other->finishItem();
+        QVERIFY2(!other->selectedItemWrapper()->options().testFlag(AnnotationTool::CornerOption), "only boxes take corners");
+    }
+}
 
 #include "AnnotationLookTest.moc"

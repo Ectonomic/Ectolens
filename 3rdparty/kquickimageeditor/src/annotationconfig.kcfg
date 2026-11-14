@@ -38,6 +38,13 @@
         <default>2</default>
         <min>0</min>
     </entry>
+    <!-- Ectolens: the radius of a rectangle's corners, in the picture's pixels (0 is square) -->
+    <entry name="rectangleCornerRadius" type="UInt">
+        <label>Corner radius for rectangle annotation tool</label>
+        <default>0</default>
+        <min>0</min>
+        <max>200</max>
+    </entry>
     <entry name="ellipseStrokeWidth" type="UInt">
         <label>Stroke width for ellipse annotation tool</label>
         <default>2</default>

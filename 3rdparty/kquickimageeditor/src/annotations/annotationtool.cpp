@@ -167,6 +167,12 @@ void AnnotationTool::setType(AnnotationTool::Tool type)
         Q_EMIT textAlignmentChanged(textAlignment());
     }
 
+    // (read after the type changed: cornerRadius() is the Rectangle tool's alone)
+    const int oldCornerRadius = oldType == RectangleTool ? int(AnnotationConfig::rectangleCornerRadius()) : 0;
+    if (oldCornerRadius != cornerRadius()) {
+        Q_EMIT cornerRadiusChanged(cornerRadius());
+    }
+
     const auto &oldGeometry = d->geometryForType(oldType);
     const auto &newGeometry = d->geometryForType(type);
     if (oldGeometry != newGeometry) {
@@ -219,6 +225,8 @@ constexpr AnnotationTool::Options AnnotationToolPrivate::optionsForType(Annotati
     case ArrowTool:
         return {StrokeOption, ShadowOption, TransformOption};
     case RectangleTool:
+        // Ectolens: and its corners' radius
+        return {StrokeOption, ShadowOption, FillOption, CornerOption, TransformOption};
     case EllipseTool:
         return {StrokeOption, ShadowOption, FillOption, TransformOption};
     case BlurTool:
@@ -694,6 +702,26 @@ void AnnotationTool::setTextAlignment(int alignment)
 void AnnotationTool::resetTextAlignment()
 {
     setTextAlignment(Qt::AlignLeft | Qt::AlignTop);
+}
+
+int AnnotationTool::cornerRadius() const
+{
+    return d->type == RectangleTool ? int(AnnotationConfig::rectangleCornerRadius()) : 0;
+}
+
+void AnnotationTool::setCornerRadius(int radius)
+{
+    radius = std::clamp(radius, 0, Traits::maximumCornerRadius);
+    if (d->type != RectangleTool || cornerRadius() == radius) {
+        return;
+    }
+    AnnotationConfig::setRectangleCornerRadius(radius);
+    Q_EMIT cornerRadiusChanged(radius);
+}
+
+void AnnotationTool::resetCornerRadius()
+{
+    setCornerRadius(0);
 }
 
 QRectF AnnotationToolPrivate::geometryForType(AnnotationTool::Tool type) const

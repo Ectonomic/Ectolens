@@ -43,6 +43,7 @@ Row {
     readonly property bool hasFont: options & AnnotationTool.FontOption
     readonly property bool hasStrength: options & AnnotationTool.StrengthOption
     readonly property bool hasShadow: options & AnnotationTool.ShadowOption
+    readonly property bool hasCorners: options & AnnotationTool.CornerOption
     // where its menus open: below the row, unless the row says otherwise (the overlay's row above
     // the tools opens them above it, away from the tools)
     property string menuSide: "below"
@@ -100,6 +101,25 @@ Row {
     }
 
     component Sep: EctoSeparator {}
+    // Corners' drawing: one corner of a box, rounded as much as the radius (scaled down: 48 px and
+    // more fill the drawing, and every size in the menu looks different)
+    component CornerGlyph: Item {
+        property int cornerRadius: 0
+        property color color
+        width: 14
+        height: 14
+        clip: true
+        Rectangle {
+            x: 1
+            y: 1
+            width: 30
+            height: 30
+            radius: parent.cornerRadius > 0 ? Math.min(12, Math.max(2, 12 * Math.sqrt(parent.cornerRadius / 48))) : 0
+            color: "transparent"
+            border.width: 1.5
+            border.color: parent.color
+        }
+    }
     // Align's drawing: three lines of words set left, centered or right (across), or, for up and
     // down, a line of words at the top, middle or bottom of a box's outline
     component AlignGlyph: Item {
@@ -196,6 +216,26 @@ Row {
         onClicked: {
             colorMenu.kind = "fill"
             colorMenu.openFor(fillSwatch, i18nc("@title", "Fill"), root.get("fillColor"), true, root.menuSide)
+        }
+    }
+    // a box's corners, drawn as a square outline rounded that much
+    EctoButton {
+        id: cornersButton
+        objectName: "optionCorners"
+        visible: root.hasCorners
+        readonly property int cornerRadius: root.get("cornerRadius") ?? 0
+        text: cornerRadius > 0 ? i18nc("@info:tooltip corner radius in pixels", "Corners: %1 px", String(cornerRadius))
+                               : i18nc("@info:tooltip a box's corners", "Corners: square")
+        iconOnly: true
+        menuOpen: cornersMenu.opened
+        onClicked: cornersMenu.toggleAt(cornersButton, root.menuSide)
+        CornerGlyph {
+            anchors.centerIn: parent
+            cornerRadius: cornersButton.cornerRadius
+            color: root.t.fg
+        }
+        WheelHandler {
+            onWheel: event => root.set("cornerRadius", Math.max(0, Math.min(200, cornersButton.cornerRadius + (event.angleDelta.y > 0 ? 1 : -1))))
         }
     }
     // Label: the words on a box of the color, or plain words
@@ -432,6 +472,28 @@ Row {
                     height: Math.min(widthItem.modelData, 12)
                     radius: height / 2
                     color: widthItem.t.fg
+                }
+            }
+        }
+    }
+    EctoMenu {
+        id: cornersMenu
+        objectName: "cornersMenu"
+        minimumWidth: 132
+        Repeater {
+            model: [0, 2, 4, 8, 12, 16, 24, 32, 48]
+            EctoMenuItem {
+                id: cornersItem
+                required property int modelData
+                objectName: "cornerRadius" + modelData
+                tickColumn: true
+                tick: cornersButton.cornerRadius === modelData
+                text: modelData > 0 ? i18nc("@item corner radius in pixels", "%1 px", String(modelData))
+                                    : i18nc("@item a box's corners not rounded", "Square")
+                onClicked: root.set("cornerRadius", modelData)
+                CornerGlyph {
+                    cornerRadius: cornersItem.modelData
+                    color: cornersItem.t.fg
                 }
             }
         }

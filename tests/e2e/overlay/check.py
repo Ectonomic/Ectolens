@@ -506,6 +506,21 @@ if scenario == 'annotate':
         box2 = pic.getpixel((sx2 - 4, sy2))
         words2 = max((pic.getpixel((sx2 + a, sy2 + b)) for a in range(0, 90) for b in range(-6, 7)), key=luma)
         results.append((near(box2, (239, 68, 68), 12) and luma(words2) > 200, 'the next Text mark is a red label with white words', f'box {box2}, words {words2}'))
+        # Corners, with real clicks: 16 px picked from the Rectangle tool's Corners menu, then a box
+        # drawn from (1000, 300) to (1150, 420) in the tool's fill (opaque red to start, Spectacle's):
+        # the fill inside the round corner, and the cut corner as the screen was before any mark
+        rect_tool = next((t for t in tools if t[0] == 'RectangleTool'), None)
+        corners = dict(f.split('=', 1) for f in (rect_tool or [])[1:] if '=' in f)
+        results.append((corners.get('corners') == '16', 'a click on 16 px in the Corners menu sets the Rectangle tool to it', str(rect_tool)))
+        fill = corners.get('fill', '#000000/0')
+        fill_rgb = tuple(int(fill[i:i + 2], 16) for i in (1, 3, 5))
+        before = shot('framed')
+        cx, cy = 1000 - fx, 300 - fy
+        cut, inside, middle = pic.getpixel((cx + 1, cy + 1)), pic.getpixel((cx + 8, cy + 8)), pic.getpixel((cx + 75, cy + 60))
+        was = before.getpixel((1001, 301))
+        results.append((fill.endswith('/255') and near(cut, was, 14) and not near(was, fill_rgb, 40) and near(inside, fill_rgb, 14) and near(middle, fill_rgb, 14),
+                        'the box drawn after is rounded: its fill inside the round corner and in its middle, the cut corner as the screen was',
+                        f'corner {cut} (was {was}), inside the arc {inside}, middle {middle}'))
     report(results)
 if scenario == 'window':
     # Open with › Ectolens checked: Enter opens the window; its menus open with real clicks.

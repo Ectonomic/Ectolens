@@ -313,6 +313,8 @@ class KQUICKIMAGEEDITOR_EXPORT SelectedItemWrapper : public QObject
     // Ectolens: where a Text mark's words sit: Qt.AlignLeft, Qt.AlignHCenter or Qt.AlignRight across it,
     // with Qt.AlignTop, Qt.AlignVCenter or Qt.AlignBottom up and down a box
     Q_PROPERTY(int textAlignment READ textAlignment WRITE setTextAlignment NOTIFY textAlignmentChanged)
+    // Ectolens: a box's corner radius (AnnotationTool::CornerOption)
+    Q_PROPERTY(int cornerRadius READ cornerRadius WRITE setCornerRadius NOTIFY cornerRadiusChanged)
     Q_PROPERTY(int number READ number WRITE setNumber NOTIFY numberChanged)
     Q_PROPERTY(QString text READ text WRITE setText NOTIFY textChanged)
     Q_PROPERTY(bool shadow READ hasShadow WRITE setShadow NOTIFY shadowChanged)
@@ -376,6 +378,9 @@ public:
     int textAlignment() const;
     void setTextAlignment(int alignment);
 
+    int cornerRadius() const;
+    void setCornerRadius(int radius);
+
     int number() const;
     void setNumber(int number);
 
@@ -402,6 +407,7 @@ Q_SIGNALS:
     void fontChanged();
     void fontColorChanged();
     void textAlignmentChanged();
+    void cornerRadiusChanged();
     void numberChanged();
     void textChanged();
     void shadowChanged();

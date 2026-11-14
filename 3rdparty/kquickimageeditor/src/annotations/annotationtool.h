@@ -86,6 +86,8 @@ class KQUICKIMAGEEDITOR_EXPORT AnnotationTool : public QObject
      * Qt.AlignLeft | Qt.AlignTop for the other tools.
      */
     Q_PROPERTY(int textAlignment READ textAlignment WRITE setTextAlignment RESET resetTextAlignment NOTIFY textAlignmentChanged)
+    // Ectolens: the radius of a box's corners, in the picture's pixels (0 is square); the Rectangle tool's alone
+    Q_PROPERTY(int cornerRadius READ cornerRadius WRITE setCornerRadius RESET resetCornerRadius NOTIFY cornerRadiusChanged)
     Q_PROPERTY(QRectF geometry READ geometry WRITE setGeometry RESET resetGeometry NOTIFY geometryChanged)
     Q_PROPERTY(qreal aspectRatio READ aspectRatio WRITE setAspectRatio RESET resetAspectRatio NOTIFY aspectRatioChanged)
 
@@ -155,6 +157,8 @@ public:
         TranslateOption = 1 << 9,
         ResizeOption = 1 << 10,
         RotateOption = 1 << 11,
+        // Ectolens: rounded corners (the Rectangle tool)
+        CornerOption = 1 << 12,
         TransformOption = TranslateOption | ResizeOption | RotateOption,
     };
     Q_DECLARE_FLAGS(Options, Option)
@@ -213,6 +217,10 @@ public:
     void setTextAlignment(int alignment);
     void resetTextAlignment();
 
+    int cornerRadius() const;
+    void setCornerRadius(int radius);
+    void resetCornerRadius();
+
     QRectF geometry() const;
     void setGeometry(const QRectF &rect);
     void resetGeometry();
@@ -233,6 +241,7 @@ Q_SIGNALS:
     void numberChanged(const int number);
     void shadowChanged(bool hasShadow);
     void textAlignmentChanged(int alignment);
+    void cornerRadiusChanged(int radius);
     void geometryChanged(const QRectF &rect);
     void aspectRatioChanged(qreal ratio);
 

@@ -68,6 +68,7 @@ Ectolens started from it, the biggest first. Each row links to its section.
 | [Reading QR codes](#pick-a-color-measure-read-a-qr-code-pin) | In the window, after a capture | In the overlay, while you frame |
 | [Dropped frames](#pause-crash-safe-mp4-and-dropped-frames) | ❌ No | ✅ Yes: counted on the recording bar |
 | [Text alignment](#labels-badges-and-text-boxes) | Always left | Left, center or right; in a box, also top, middle or bottom |
+| [Rounded boxes](#rounded-corners-for-boxes) | ❌ No: square corners only | ✅ Yes: Corners in the Rectangle tool's options rounds a box's corners, and they stay round when you resize the box |
 | [Sharing](#what-a-capture-does-next) | Every share service KDE has, including public Imgur uploads | Only the services that work on your computer |
 
 The pictures below with a divider sweeping across them show the same moment
@@ -304,10 +305,19 @@ video editor can change one without the other.
 ## Improved marking up
 
 Ectolens improves Spectacle's marking tools, from KDE's KQuickImageEditor,
-with clearer labels and number badges, text boxes whose words wrap, and
-words you can align. Where
-the tools' options open, how you pick colors and fonts, and where the tools
-sit in the window are part of Ectolens's [improved UI and user experience](#improved-ui-and-user-experience).
+with clearer labels and number badges, text boxes whose words wrap, words
+you can align, and boxes with rounded corners. Where the tools' options
+open, how you pick colors and fonts, and where the tools sit in the window
+are part of Ectolens's [improved UI and user experience](#improved-ui-and-user-experience).
+
+### Rounded corners for boxes
+
+The Rectangle tool's options have **Corners**, next to Fill. Its menu rounds
+a box's corners from Square up to 48 px, and the scroll wheel over it sets
+any size in between, up to 200 px. The fill, the outline, the shadow and the
+area you click all follow the round corners, and they stay round when you
+stretch the box. Pick a box you've drawn to change its corners, and Undo
+puts them back. Your choice is kept for the next box.
 
 ### Labels, badges and text boxes
 

@@ -873,6 +873,11 @@ void AnnotationDocument::beginItem(const QPointF &point)
         shadow.emplace(d->tool->hasShadow());
     }
 
+    // Ectolens: a box's corners
+    if (toolOptions.testFlag(CornerOption)) {
+        geometry->cornerRadius = d->tool->cornerRadius();
+    }
+
     if (isAnyOfToolType(toolType, FreehandTool, HighlighterTool)) {
         geometry->path = Traits::minPath(geometry->path);
     }
@@ -1213,6 +1218,8 @@ void SelectedItemWrapperPrivate::setSelectedItem(const HistoryItem::const_shared
 
         options.setFlag(AnnotationTool::ShadowOption, //
                         std::get<Traits::Shadow::Opt>(temp->traits()).has_value());
+        // Ectolens: a box's corners
+        options.setFlag(AnnotationTool::CornerOption, Traits::takesCorners(temp->traits()));
         transform = {};
     } else {
         reset();
@@ -1369,6 +1376,36 @@ int SelectedItemWrapper::strokeWidth() const
     }
     auto &stroke = std::get<Traits::Stroke::Opt>(temp->traits());
     return stroke->pen.widthF();
+}
+
+int SelectedItemWrapper::cornerRadius() const
+{
+    auto &temp = d->document->d->tempItem;
+    if (!d->options.testFlag(AnnotationTool::CornerOption) || !temp) {
+        return 0;
+    }
+    auto &geometry = std::get<Traits::Geometry::Opt>(temp->traits());
+    return geometry ? qRound(geometry->cornerRadius) : 0;
+}
+
+void SelectedItemWrapper::setCornerRadius(int radius)
+{
+    auto &temp = d->document->d->tempItem;
+    if (!d->options.testFlag(AnnotationTool::CornerOption) || !temp) {
+        return;
+    }
+    auto &geometry = std::get<Traits::Geometry::Opt>(temp->traits());
+    radius = std::clamp(radius, 0, Traits::maximumCornerRadius);
+    if (!geometry || geometry->cornerRadius == radius) {
+        return;
+    }
+    d->document->d->setRepaintRegion(temp->renderRect());
+    geometry->cornerRadius = radius;
+    Traits::reInitTraits(temp->traits());
+    d->document->d->setRepaintRegion(temp->renderRect());
+    Q_EMIT cornerRadiusChanged();
+    Q_EMIT geometryPathChanged();
+    Q_EMIT mousePathChanged();
 }
 
 void SelectedItemWrapper::setStrokeWidth(int width)

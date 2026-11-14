@@ -154,6 +154,18 @@ QSizeF textLabelPadding(const QFont &font);
 qreal textLabelRadius(const QFont &font);
 // What the fill covers: a text label's box, otherwise Geometry::path.
 QPainterPath fillPath(const OptTuple &traits);
+
+// Ectolens: the largest corner radius a box takes
+inline constexpr int maximumCornerRadius = 200;
+// Ectolens: the drawn outline of Geometry::path: its corners rounded to Geometry::cornerRadius when it
+// is one closed shape of straight lines, the path as it is otherwise
+QPainterPath shapePath(const OptTuple &traits);
+// Ectolens: a closed shape of straight lines with every corner rounded to a circle's arc of `radius`
+// (less where an edge is too short for it: at most half of each edge); any other path as it is
+QPainterPath roundedCorners(const QPainterPath &path, qreal radius);
+// Ectolens: whether a mark is a box that takes rounded corners: a colored (not blurred) shape of
+// straight lines, with no words or arrow head
+bool takesCorners(const OptTuple &traits);
 // The ring around a label or badge, and the color its words take.
 QColor labelRingColor(const QColor &fill);
 QColor labelTextColor(const QColor &fill);
@@ -236,6 +248,9 @@ struct Geometry {
     COMMON_TRAIT_DEFS(Geometry)
     // The base geometry path for any item that should be drawable.
     QPainterPath path{};
+    // Ectolens: a box's corners are rounded to this radius when drawn (shapePath), so they stay
+    // round when the box is resized; the path itself keeps its sharp corners
+    qreal cornerRadius = 0;
 };
 
 struct Interactive {

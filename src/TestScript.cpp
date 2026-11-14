@@ -933,15 +933,19 @@ void next()
         }
         later(100);
     } else if (name == u"toolinfo") {
-        // the marking tool's settings: "ECTOLENS-TOOL TYPE fill=#RRGGBB/ALPHA words=#RRGGBB family=NAME size=PT align=A"
+        // the marking tool's settings: "ECTOLENS-TOOL TYPE fill=#RRGGBB/ALPHA words=#RRGGBB family=NAME size=PT align=A
+        // stroke=#RRGGBB width=PX corners=PX"
         auto tool = core->annotationDocument()->tool();
-        say(u"ECTOLENS-TOOL %1 fill=%2/%3 words=%4 family=%5 size=%6 align=%7"_s.arg(QString::fromLatin1(QMetaEnum::fromType<AnnotationTool::Tool>().valueToKey(tool->type())))
+        say(u"ECTOLENS-TOOL %1 fill=%2/%3 words=%4 family=%5 size=%6 align=%7 stroke=%8 width=%9"_s.arg(QString::fromLatin1(QMetaEnum::fromType<AnnotationTool::Tool>().valueToKey(tool->type())))
                 .arg(tool->fillColor().name())
                 .arg(tool->fillColor().alpha())
                 .arg(tool->fontColor().name())
                 .arg(QString(tool->font().family()).remove(u' '))
                 .arg(tool->font().pointSize())
-                .arg(tool->textAlignment()));
+                .arg(tool->textAlignment())
+                .arg(tool->strokeColor().name())
+                .arg(tool->strokeWidth())
+            + u" corners=%1"_s.arg(tool->cornerRadius()));
         later(100);
     } else if (name == u"textinfo") {
         sayTextInfo();
