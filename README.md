@@ -8,17 +8,17 @@
   <strong>Spectacle, evolved.</strong><br>
   Screenshots and screen recordings for KDE Plasma, from one key.<br>
   Frame anything, then capture it or record it from the same toolbar.<br>
-  Plus many more <a href="#what-ectolens-adds-to-spectacle">features and refinements</a> that Spectacle doesn't have.
+  Plus <a href="#how-ectolens-improves-on-spectacle">an improved UI and user experience, better recordings and new features</a>.
 </p>
 
 <p align="center">
-  <a href="#what-ectolens-adds-to-spectacle">What it adds</a> &nbsp;·&nbsp;
-  <a href="#the-overlay">The overlay</a> &nbsp;·&nbsp;
-  <a href="#recording">Recording</a> &nbsp;·&nbsp;
-  <a href="#marking-up">Marking up</a> &nbsp;·&nbsp;
-  <a href="#new-tools-in-the-overlay">Tools</a> &nbsp;·&nbsp;
+  <a href="#how-ectolens-improves-on-spectacle">Improvements</a> &nbsp;·&nbsp;
+  <a href="#improved-capturing">Capturing</a> &nbsp;·&nbsp;
+  <a href="#improved-ui-and-user-experience">UI and UX</a> &nbsp;·&nbsp;
+  <a href="#improved-recording">Recording</a> &nbsp;·&nbsp;
+  <a href="#improved-marking-up">Marking up</a> &nbsp;·&nbsp;
+  <a href="#new-features-in-the-overlay">New features</a> &nbsp;·&nbsp;
   <a href="#captures-for-ai-agents">AI agents</a> &nbsp;·&nbsp;
-  <a href="#ectos-look-or-kdes">Look</a> &nbsp;·&nbsp;
   <a href="#installing">Installing</a>
 </p>
 
@@ -40,16 +40,18 @@ Qt 6.11 and KDE Frameworks 6.30 or newer, `install.sh` builds it from this
 source for you alone. Either way, Spectacle stays installed, and its shortcuts
 can go back to it: [Installing](#installing).
 
-## What Ectolens adds to Spectacle
+## How Ectolens improves on Spectacle
 
-What changed from Spectacle's master branch of November 1, 2026, the day
-Ectolens started from it, the biggest changes first. Each row links to its
-section.
+Ectolens improves Spectacle's capturing, its recording, and its UI and user
+experience, and adds features Spectacle doesn't have. The table lists each
+improvement over Spectacle's master branch of November 1, 2026, the day
+Ectolens started from it, the biggest first. Each row links to its section.
 
 | | Spectacle | Ectolens |
 |---|---|---|
 | [Capture or record the same frame](#capture-or-record-the-same-frame) | Recording starts from its own menu, New Recording | **Capture** and **Record** side by side, for the same frame |
 | [Capture or record a window](#capture-or-record-a-window-with-a-click) | Drag a frame around the window | Point at the window and click |
+| [Improved UI and user experience](#improved-ui-and-user-experience) | KDE's standard toolbars and dialogs: a tool's options start at the far left whichever tool you picked, marking in the window waits behind Edit, and colors and fonts are picked in separate windows that cover your work and change nothing until you press OK | A redesigned, streamlined UI and a smoother user experience: each step shows only what it needs, where you're already working. A tool's options open right above its button, the window opens with the marking tools ready, and colors and fonts are picked from menus where one click puts them on the mark. One design and one spacing throughout, in Ecto's dark look or your KDE colors |
 | [Hiding private information](#hide-private-information) | ❌ No: you find it and cover it yourself, with the Blur or Pixelate tool | ✅ Yes: Hide Private Info reads the words in the frame and blurs email addresses, phone numbers, street addresses, keys, tokens, passwords, home-folder paths, your name and the names you add to your own list, with one click, or on its own for an agent's capture |
 | [Recording quality](#quality-and-frame-rate) | One fixed setting per format, set low for WebM and for MP4 through the graphics chip; users found text in its recordings blurred and blocky | Small File, High or Best, each with its size per minute, or your own settings; High keeps text sharp |
 | [Video encoders](#encoders-and-their-settings) | The best H.264 or VP9 encoder it finds | Your pick for MP4: x264, x265, SVT-AV1 or NVENC, or the system's own H.264 where FFmpeg lacks it |
@@ -65,17 +67,19 @@ section.
 | [Color picker, ruler and pinning](#pick-a-color-measure-read-a-qr-code-pin) | ❌ No | ✅ Yes: Pick Color, Measure and Pin |
 | [Reading QR codes](#pick-a-color-measure-read-a-qr-code-pin) | In the window, after a capture | In the overlay, while you frame |
 | [Dropped frames](#pause-crash-safe-mp4-and-dropped-frames) | ❌ No | ✅ Yes: counted on the recording bar |
-| [Where a tool's options open](#labels-badges-and-text-boxes) | In a bar starting at the left end of the tool row | Right above the tool's own button |
 | [Text alignment](#labels-badges-and-text-boxes) | Always left | Left, center or right; in a box, also top, middle or bottom |
-| [Color and font pickers](#colors-and-fonts) | Qt's color and font dialogs, separate windows that open over your work | Menus in the tool's own options: twelve colors and a picker for any other in one menu, and every font shown in its own face with a search |
 | [Sharing](#what-a-capture-does-next) | Every share service KDE has, including public Imgur uploads | Only the services that work on your computer |
-| [Appearance](#ectos-look-or-kdes) | Your KDE colors and fonts | Ecto's look to start with: a dark overlay in the Geist typeface with one accent color. Or your KDE colors and fonts, with any accent color and as much dimming around the frame as you choose |
 
 The pictures below with a divider sweeping across them show the same moment
 in Spectacle 6.7.5, the version Plasma 6.7 ships, and in Ectolens, filmed on
 the same desktop.
 
-## The overlay
+## Improved capturing
+
+Ectolens makes capturing quicker than in Spectacle. A click frames a window,
+Capture and Record sit side by side for the same frame, fewer buttons stand
+around it, and Undo and Redo take back the frame's moves as well as your
+marks.
 
 ### Capture or record a window with a click
 
@@ -143,11 +147,88 @@ left out too, since After Capture has rows of its own for them. Send via Email
 is listed only when an email app is set to open email links, and Send to Device
 only when KDE Connect has a paired device.
 
-## Recording
+## Improved UI and user experience
 
-Spectacle records with KPipeWire, KDE's screen recording library. Ectolens
-records with its own copy of KPipeWire, which adds the choices below and fixes
-six of KPipeWire's bugs. The KPipeWire your system uses is never replaced.
+Spectacle is built from KDE's standard toolbars, buttons and dialogs. A
+tool's options often open far from the tool, marking in the window waits
+behind a button, and picking a color or a font takes you out of the overlay
+into a separate window. Ectolens improves both the UI and the user
+experience. The UI is redesigned and streamlined, and the experience is
+smoother: each step shows only what it needs, right where you're working,
+with fewer clicks and nothing covering your work. Every row, menu and
+tooltip in the overlay and the window is built from one set of rounded parts
+and spaced to one standard, so a button sits the same distance from its row's ends, and a
+menu's words start in one column, wherever you meet them.
+
+### Options at the tool
+
+Spectacle opens a tool's options in a bar above the tool row, starting at its
+left end, whichever tool you picked. Ectolens opens them right above the
+tool's own button, where your eye already is.
+
+<img src="docs/pictures/readme-vs-marking.webp" width="100%" alt="The Number tool, the divider sweeping from Spectacle to Ectolens. Spectacle: its options in a bar at the left end above the tool row, far from the Number button at the right end, and three red numbers. Ectolens: its options in a short row right above the Number button, and three green numbers">
+
+### Colors and fonts in the overlay
+
+Spectacle picks colors and fonts in Qt's dialogs. Each opens a separate
+window over your work, the color dialog holds the overlay until you close it,
+and a choice shows on the picture only once you press OK. Ectolens picks them
+in menus that open from the tool's options, in the same look as the rest of
+the overlay, and a choice shows on the mark the moment you click it.
+
+The color menu has twelve colors, Ecto green first, None for a shape's
+outline or fill, and Custom, a picker in the same menu for any color by its
+saturation, brightness, hue, opacity or hex value. A click on a color closes
+the menu. The font menu shows every installed font in its own face, Geist
+first, with a search and the weight. A click changes the font and leaves the
+menu open, so you can try a few.
+
+<p>
+  <img src="docs/pictures/readme-color-menu.webp" width="49%" alt="The color menu of the Text tool: twelve colors with Ecto green first, and Custom">
+  <img src="docs/pictures/readme-font-menu.webp" width="49%" alt="The font menu of the Text tool: a search, the weight, and the installed fonts, each in its own face, Geist first">
+</p>
+
+### Marking ready in the window
+
+Spectacle's window opens on a toolbar of actions, with marking behind its
+Edit button. Ectolens's window has the marking tools in its top bar from the
+start, Copy, Save and Extract Text at the bottom, and a line saying what
+After Capture did.
+
+<img src="docs/pictures/readme-vs-window.webp" width="100%" alt="The window, the divider sweeping from Spectacle to Ectolens. Spectacle: a toolbar of save, copy and export buttons, Edit, New Screenshot, New Recording and Options over the marked capture. Ectolens: the marking tools in the top bar, a line saying the capture was copied to the clipboard, and Copy, Save, Extract Text and New Capture at the bottom">
+
+### Ecto's look, or KDE's
+
+Ectolens draws its overlay and window in the colors of Ectonomic's Ecto
+design family, with the Geist typeface, which ships with it. In Settings › Appearance you
+can switch back to your KDE colors and fonts, use your KDE accent color or
+any other, and choose how dark the rest of the screen gets.
+
+<p>
+  <img src="docs/pictures/readme-ecto-look.webp" width="49%" alt="The overlay in Ecto's look over the marked terminal: near-black rows in Geist, with the frame and the tool in use in Ecto green">
+  <img src="docs/pictures/readme-kde-look.webp" width="49%" alt="The same overlay in your KDE colors and font, here KDE's Breeze Light, with KDE's blue accent">
+</p>
+
+In Ecto's look the overlay is always dark, since it sits over your screen.
+The Ectolens window follows Plasma's color scheme: dark in a dark scheme, and
+light in a light one.
+
+<p>
+  <img src="docs/pictures/readme-window.webp" width="49%" alt="The Ectolens window, dark, with the marked terminal capture, the marking tools above it, and Copy, Save, Extract Text and New Capture below">
+  <img src="docs/pictures/readme-window-light.webp" width="49%" alt="The same window in a light color scheme">
+</p>
+
+<img src="docs/pictures/readme-appearance.webp" width="100%" alt="Settings, Appearance: the look, Ecto or your KDE colors and fonts; the accent, Ecto green, your KDE accent or a custom color; how dark the rest of the screen gets; and a preview of the overlay">
+
+## Improved recording
+
+Ectolens makes better recordings than Spectacle: text stays sharp, 60 frames
+a second stays 60, and you pick the quality, the frame rate and the encoder.
+A recording can pause, keep each sound on a track of its own, and still play
+after a crash. Spectacle records with KPipeWire, KDE's screen recording
+library. Ectolens records with its own copy of KPipeWire, which adds these
+improvements and fixes six of KPipeWire's bugs. The KPipeWire your system
+uses is never replaced.
 
 ### Quality and frame rate
 
@@ -220,21 +301,19 @@ video editor can change one without the other.
   Ectolens's copy fixes that, along with five more of KPipeWire's bugs, listed
   in [docs/deferred.md](docs/deferred.md#upstream-bugs-fixed-here-could-be-offered-back-to-kde).
 
-## Marking up
+## Improved marking up
 
-Ectolens keeps Spectacle's marking tools, from KDE's KQuickImageEditor. It
-changes where their options open, how words and numbers look, how you pick
-colors and fonts, and where the tools sit in the window.
+Ectolens improves Spectacle's marking tools, from KDE's KQuickImageEditor,
+with clearer labels and number badges, text boxes whose words wrap, and
+words you can align. Where
+the tools' options open, how you pick colors and fonts, and where the tools
+sit in the window are part of Ectolens's [improved UI and user experience](#improved-ui-and-user-experience).
 
 ### Labels, badges and text boxes
 
-Spectacle opens a tool's options in a bar above the tool row, starting at its
-left end, whichever tool you picked. Ectolens opens them right above the
-tool's own button. Its Text and Number tools have a new look: words on a
-rounded label, and numbers on round badges that count up with each click, in
-Ecto green to start.
-
-<img src="docs/pictures/readme-vs-marking.webp" width="100%" alt="The Number tool, the divider sweeping from Spectacle to Ectolens. Spectacle: its options in a bar at the left end above the tool row, far from the Number button at the right end, and three red numbers. Ectolens: its options in a short row right above the Number button, and three green numbers">
+Ectolens's Text and Number tools have a new look: words on a rounded label,
+and numbers on round badges that count up with each click, in Ecto green to
+start.
 
 <img src="docs/pictures/readme-marks.webp" width="100%" alt="Build commands in a framed terminal. The Number tool is picked and three clicks place badges 1, 2 and 3 after three of the commands; then the Text tool, and a label typed beside the first badge: Run these in order">
 
@@ -253,29 +332,10 @@ your latest step, typing or a resize, and Ctrl+Shift+Z puts it back.
 
 <img src="docs/pictures/readme-text-align.webp" width="100%" alt="A text box drawn under the build commands with the words Run these in order, top to bottom at its top left. The Align menu opens from the Text tool's options: Left, Center and Right, then Top, Middle and Bottom for a box. Center moves the words to the middle of the line, and Middle moves them down to the middle of the box">
 
-### Colors and fonts
+## New features in the overlay
 
-Where Spectacle opens Qt's color and font dialogs, Ectolens has menus of its
-own. The color menu has twelve colors, Ecto green first, None for a shape's
-outline or fill, and a picker for any color by its saturation, brightness,
-hue, opacity or hex value. The font menu shows every installed font in its
-own face, Geist first, with a search and the weight.
-
-<p>
-  <img src="docs/pictures/readme-color-menu.webp" width="49%" alt="The color menu of the Text tool: twelve colors with Ecto green first, and Custom">
-  <img src="docs/pictures/readme-font-menu.webp" width="49%" alt="The font menu of the Text tool: a search, the weight, and the installed fonts, each in its own face, Geist first">
-</p>
-
-### Marking in the window
-
-Spectacle's window opens on a toolbar of actions, with marking behind its
-Edit button. Ectolens's window has the marking tools in its top bar from the
-start, Copy, Save and Extract Text at the bottom, and a line saying what
-After Capture did.
-
-<img src="docs/pictures/readme-vs-window.webp" width="100%" alt="The window, the divider sweeping from Spectacle to Ectolens. Spectacle: a toolbar of save, copy and export buttons, Edit, New Screenshot, New Recording and Options over the marked capture. Ectolens: the marking tools in the top bar, a line saying the capture was copied to the clipboard, and Copy, Save, Extract Text and New Capture at the bottom">
-
-## New tools in the overlay
+Ectolens adds tools Spectacle doesn't have: Hide Private Info, exact capture
+sizes, Pick Color, Measure and Pin, and it reads QR codes while you frame.
 
 ### Hide private information
 
@@ -335,7 +395,7 @@ window, Ectolens resizes the window to fit and puts it back afterward.
 
 ## Captures for AI agents
 
-Ectolens comes with an MCP server, `ectolens-mcp`, so an AI agent such as
+Captures for AI agents are new in Ectolens. It comes with an MCP server, `ectolens-mcp`, so an AI agent such as
 Claude Code can ask for a picture or a recording of your screen. You decide
 what it gets:
 
@@ -374,30 +434,6 @@ claude mcp add ectolens -- /path/to/ectolens-mcp
 ```
 
 <img src="docs/pictures/readme-agent.webp" width="100%" alt="An agent's request arriving: the overlay frames a terminal, then the screen around it dims and a gray dialog pops up in the middle: Claude Code asks for this picture, See why the build failed, a preview of the terminal with its email address, key and home folder blurred, Blur private information checked with 6 found and blurred in the preview, and the buttons Don't Send, Adjust First and Send">
-
-## Ecto's look, or KDE's
-
-Spectacle draws in your KDE colors and fonts. Ectolens draws its overlay and
-window in the colors of Ectonomic's Ecto design family, with the Geist
-typeface, which ships with it. In Settings › Appearance you can switch back
-to your KDE colors and fonts, use your KDE accent color or any other, and
-choose how dark the rest of the screen gets.
-
-<p>
-  <img src="docs/pictures/readme-ecto-look.webp" width="49%" alt="The overlay in Ecto's look over the marked terminal: near-black rows in Geist, with the frame and the tool in use in Ecto green">
-  <img src="docs/pictures/readme-kde-look.webp" width="49%" alt="The same overlay in your KDE colors and font, here KDE's Breeze Light, with KDE's blue accent">
-</p>
-
-In Ecto's look the overlay is always dark, since it sits over your screen.
-The Ectolens window follows Plasma's color scheme: dark in a dark scheme, and
-light in a light one.
-
-<p>
-  <img src="docs/pictures/readme-window.webp" width="49%" alt="The Ectolens window, dark, with the marked terminal capture, the marking tools above it, and Copy, Save, Extract Text and New Capture below">
-  <img src="docs/pictures/readme-window-light.webp" width="49%" alt="The same window in a light color scheme">
-</p>
-
-<img src="docs/pictures/readme-appearance.webp" width="100%" alt="Settings, Appearance: the look, Ecto or your KDE colors and fonts; the accent, Ecto green, your KDE accent or a custom color; how dark the rest of the screen gets; and a preview of the overlay">
 
 ## Status
 
