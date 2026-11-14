@@ -615,11 +615,16 @@ if scenario == 'share':
     notes = notifications()
     note = notes[-1] if notes else {}
     clip = lines('ECTOLENS-CLIPBOARD')
+    split = lambda found: set(found[0][0].split(',')) if found and found[0] else set()
+    offered, left_out = split(lines('ECTOLENS-SHARETARGETS')), split(lines('ECTOLENS-SHARELEFTOUT'))
     results = [
         (bool(lines('ECTOLENS-SHARE-ASKED')), 'with Share set to ask each time, Enter asks where to share first', ''),
         (bool(lines('ECTOLENS-SHARETARGETS')) and 'clipboardplugin' not in lines('ECTOLENS-SHARETARGETS')[0][0].split(',')
          and len(lines('ECTOLENS-SHARETARGETS')[0][0].split(',')) > 1,
          "Share lists KDE's services, without Copy to clipboard (After Capture has its own row)", str(lines('ECTOLENS-SHARETARGETS'))),
+        (bool(lines('ECTOLENS-SHARELEFTOUT')) and not (left_out & offered) and {'clipboardplugin', 'imgurplugin'} <= left_out,
+         "Share leaves out KDE's Copy to clipboard and Imgur, and lists nothing it leaves out (share_services_test holds every rule)",
+         f'left out {sorted(left_out)}, listed {sorted(offered)}'),
         (menus == [['1']], 'the share services open over Capture', str(menus)),
         (any(c[:1] == ['image'] for c in clip), "Esc skips sharing and the capture still finishes (copied)", str(clip)),
         (note.get('text') == 'Copied to the clipboard.', 'and the notification says so', str(note)),

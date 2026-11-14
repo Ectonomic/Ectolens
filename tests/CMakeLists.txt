@@ -90,3 +90,16 @@ target_link_libraries(ectolens-fake-input PRIVATE PkgConfig::WAYLAND_CLIENT)
 # Ectolens: times the compositor's answers from outside it (a frozen desktop shows as a slow answer)
 add_executable(ectolens-compositor-watch e2e/overlay/compositor-watch.c)
 target_link_libraries(ectolens-compositor-watch PRIVATE PkgConfig::WAYLAND_CLIENT)
+
+# Ectolens: which of KDE's share services Share offers (retired ones never; Email with an email
+# app; Send to Device with a paired device). On a private session bus: a stand-in KDE Connect,
+# never the desktop's.
+find_program(DBUS_RUN_SESSION dbus-run-session)
+if(PURPOSE_FOUND AND DBUS_RUN_SESSION)
+    add_executable(share_services_test ShareServicesTest.cpp ../src/Gui/ShareServices.cpp)
+    target_include_directories(share_services_test PRIVATE ${CMAKE_BINARY_DIR}/src)
+    target_link_libraries(share_services_test Qt::Test Qt::DBus KF6::Purpose KF6::Service KF6::I18n)
+    ecm_mark_as_test(share_services_test)
+    add_test(NAME share_services_test COMMAND ${DBUS_RUN_SESSION} -- $<TARGET_FILE:share_services_test>)
+    set_tests_properties(share_services_test PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+endif()

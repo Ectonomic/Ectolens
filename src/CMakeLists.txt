@@ -38,6 +38,7 @@ target_sources(ectolens PRIVATE
     TestScript.cpp
     Gui/Selection.cpp
     Gui/SelectionEditor.cpp
+    Gui/ShareServices.cpp
     Gui/SettingsDialog/AppearanceOptionsPage.cpp
     Gui/SettingsDialog/AgentsOptionsPage.cpp
     Gui/SettingsDialog/GeneralOptionsPage.cpp

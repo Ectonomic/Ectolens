@@ -8,12 +8,14 @@
 #include "Gui/CaptureWindow.h"
 #include "Gui/FrameHistory.h"
 #include "Gui/InlineMessageModel.h"
+#include "Gui/ShareServices.h"
 #include "Gui/ViewerWindow.h"
 #include "Gui/Selection.h"
 #include "Gui/SelectionEditor.h"
 #include "Platforms/VideoPlatform.h"
 #include "SpectacleCore.h"
 
+#include <QDir>
 #include <QCoreApplication>
 #include <QGuiApplication>
 #include <QMouseEvent>
@@ -369,6 +371,14 @@ void next()
             ids << v.toMap().value(u"id"_s).toString();
         }
         say(u"ECTOLENS-SHARETARGETS "_s + ids.join(u','));
+        // and what KDE has that Share leaves out (ShareServices.h)
+        QStringList out;
+        for (const auto &v : ShareServices::all(QUrl::fromLocalFile(QDir::tempPath() + u"/ectolens-share.png"_s))) {
+            if (!v.toMap().value(u"why"_s).toString().isEmpty()) {
+                out << v.toMap().value(u"id"_s).toString();
+            }
+        }
+        say(u"ECTOLENS-SHARELEFTOUT "_s + out.join(u','));
         later(100);
     } else if (name == u"watchvisible") {
         // for the next MS milliseconds, is every screen's overlay up and drawing? (the size

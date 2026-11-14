@@ -12,6 +12,7 @@
 #include "CommandLineOptions.h"
 #include "SpectacleDBusAdapter.h"
 #include "AgentService.h"
+#include "Gui/ShareServices.h"
 #include "ScreenShotEffect.h"
 #include "settings.h"
 
@@ -92,6 +93,17 @@ int main(int argc, char **argv)
                 general.writeEntry("afterCaptureCopy", true);
             }
             general.deleteEntry("clipboardGroup");
+            general.sync();
+        }
+    }
+
+    // Ectolens: a Share service Ectolens no longer offers (Imgur, YouTube, Save as…) gives way
+    // to Ask each time, once (src/Gui/ShareServices.cpp says why each is left out).
+    {
+        KConfigGroup general(KSharedConfig::openConfig(u"ectolensrc"_s), u"General"_s);
+        const QString target = general.readEntry("afterCaptureShareTarget", QString());
+        if (!target.isEmpty() && ShareServices::isRetired(target)) {
+            general.writeEntry("afterCaptureShareTarget", QString());
             general.sync();
         }
     }

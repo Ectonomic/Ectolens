@@ -9,6 +9,7 @@
 #include "Gui/HelpMenu.h"
 #include "Gui/PinWindow.h"
 #include "Gui/SelectionEditor.h"
+#include "Gui/ShareServices.h"
 #include "Gui/SettingsDialog/SettingsDialog.h"
 #include "Platforms/RecordingQuality.h"
 #include "Platforms/VideoPlatform.h"
@@ -702,24 +703,8 @@ static QJsonObject shareInput(const QUrl &url)
 
 QVariantList CaptureTools::shareTargets() const
 {
-    QVariantList list;
-#ifdef PURPOSE_FOUND
-    Purpose::AlternativesModel model;
-    model.setInputData(shareInput(QUrl::fromLocalFile(QDir::tempPath() + u"/ectolens-share.png"_s)));
-    model.setPluginType(u"Export"_s);
-    for (int row = 0; row < model.rowCount(); ++row) {
-        const auto index = model.index(row);
-        // Copy to clipboard is its own row in After Capture and its own button in the window:
-        // KDE's share service for it would say the same thing twice
-        if (model.data(index, Purpose::AlternativesModel::PluginIdRole).toString() == u"clipboardplugin"_s) {
-            continue;
-        }
-        list << QVariantMap{{u"id"_s, model.data(index, Purpose::AlternativesModel::PluginIdRole)},
-                            {u"name"_s, model.data(index, Purpose::AlternativesModel::ActionDisplayRole)},
-                            {u"icon"_s, model.data(index, Purpose::AlternativesModel::IconNameRole)}};
-    }
-#endif
-    return list;
+    // KDE's share services for a picture, less those Ectolens leaves out (ShareServices.h)
+    return ShareServices::offered(QUrl::fromLocalFile(QDir::tempPath() + u"/ectolens-share.png"_s));
 }
 
 QString CaptureTools::shareTargetName(const QString &pluginId) const
@@ -727,7 +712,8 @@ QString CaptureTools::shareTargetName(const QString &pluginId) const
     if (pluginId.isEmpty()) {
         return i18nc("@item share service", "Ask each time");
     }
-    for (const auto &v : shareTargets()) {
+    // a saved service that can't work right now (no device paired) still goes by its name
+    for (const auto &v : ShareServices::all(QUrl::fromLocalFile(QDir::tempPath() + u"/ectolens-share.png"_s))) {
         const auto m = v.toMap();
         if (m.value(u"id"_s).toString() == pluginId) {
             return m.value(u"name"_s).toString();
@@ -739,6 +725,17 @@ QString CaptureTools::shareTargetName(const QString &pluginId) const
 void CaptureTools::share(const QString &pluginId, const QUrl &url)
 {
 #ifdef PURPOSE_FOUND
+    // a service Ectolens leaves out (or one that can't work right now: no email app, no
+    // paired device) says why, rather than opening KDE's dialog to nothing
+    for (const auto &v : ShareServices::all(url)) {
+        const auto m = v.toMap();
+        const QString why = m.value(u"why"_s).toString();
+        if (m.value(u"id"_s).toString() == pluginId && !why.isEmpty()) {
+            SpectacleCore::instance()->showErrorMessage(
+                i18nc("@info %1 a share service, %2 why it can't be used", "Could not share the capture with “%1”: %2.", m.value(u"name"_s).toString(), why));
+            return;
+        }
+    }
     // Purpose's own menu runs the share and asks for anything the service needs
     // (a device for KDE Connect, an account), so trigger its entry for this service.
     auto menu = new Purpose::Menu;

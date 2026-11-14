@@ -18,3 +18,14 @@ HOME=$T2 XDG_CONFIG_HOME=$T2/.config QT_QPA_PLATFORM=offscreen timeout 10 "$BIN/
 grep -q "afterCaptureCopyWhat=CopyTheFilePath" "$T2/.config/ectolensrc" && ! grep -q "clipboardGroup" "$T2/.config/ectolensrc" \
     || { echo "FAIL  Spectacle's copy choice did not carry over to After Capture"; cat "$T2/.config/ectolensrc"; exit 1; }
 echo "PASS  Spectacle's copy choice carried over to After Capture"
+# a Share service Ectolens no longer offers gives way to Ask each time; one it offers stays
+for pair in imgurplugin: youtubeplugin: saveasplugin: bluetoothplugin:bluetoothplugin; do
+  saved=${pair%%:*}; want=${pair#*:}
+  T3=$(mktemp -d); trap 'rm -rf "$T" "$T2" "$T3"' EXIT
+  mkdir -p "$T3/.config"; printf '[General]\nafterCaptureShare=true\nafterCaptureShareTarget=%s\n' "$saved" > "$T3/.config/ectolensrc"
+  HOME=$T3 XDG_CONFIG_HOME=$T3/.config QT_QPA_PLATFORM=offscreen timeout 10 "$BIN/ectolens" --version >/dev/null 2>&1
+  got=$(sed -n 's/^afterCaptureShareTarget=//p' "$T3/.config/ectolensrc")
+  [ "$got" = "$want" ] || { echo "FAIL  a saved Share service $saved became '$got', not '$want'"; exit 1; }
+  rm -rf "$T3"
+done
+echo "PASS  a retired Share service becomes Ask each time; one still offered stays"
