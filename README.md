@@ -319,6 +319,8 @@ area you click all follow the round corners, and they stay round when you
 stretch the box. Pick a box you've drawn to change its corners, and Undo
 puts them back. Your choice is kept for the next box.
 
+<img src="docs/pictures/readme-corners.webp" width="100%" alt="A red box with square corners drawn under the build commands. The Corners menu opens from the Rectangle tool's options: Square, then 2 to 48 px, each with a drawing of its corner. 24 px is picked, and the next box, drawn beside the first, has round corners">
+
 ### Labels, badges and text boxes
 
 Ectolens's Text and Number tools have a new look: words on a rounded label,

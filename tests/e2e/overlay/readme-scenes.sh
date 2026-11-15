@@ -7,7 +7,7 @@
 # pixels, tools/readme-pictures.sh sets it), so the pictures stay sharp on a dense display.
 
 # the scenes, in the order the README shows them
-SCENES="hero undo marks align private size tools menus window light ectolook kdelook settings spectacle agent"
+SCENES="hero undo marks corners align private size tools menus window light ectolook kdelook settings spectacle agent"
 
 README_SCENE=${SCENARIO#readme-}
 R_PX=1180; R_PY=660   # where the pointer is
@@ -76,7 +76,7 @@ readme_setup() {
     private|agent)
       printf '%s\n' '$ git config user.email' 'dana.reyes@example.com' '$ echo $OPENAI_API_KEY' \
         'sk-proj-9fK2xQ7mL4vR8tY1wZ3bN6cD5hJ0' '$ pwd' '/home/dana/projects/launch-notes' '$ ls' 'notes.md  slides.key  budget.ods' '$ ' > "$W/term.txt";;
-    marks|align|undo|window|light|ectolook|kdelook|spectacle*)
+    marks|corners|align|undo|window|light|ectolook|kdelook|spectacle*)
       printf '%s\n' '$ git clone --recurse-submodules \' '      https://github.com/Ectonomic/Ectolens.git' '$ cd Ectolens' \
         '$ cmake -S 3rdparty/kpipewire -B build/kpipewire -G Ninja' '$ cmake --build build/kpipewire && cmake --install build/kpipewire' \
         '$ cmake -S . -B build/spectacle -G Ninja' '$ cmake --build build/spectacle' '$ ' > "$W/term.txt";;
@@ -167,6 +167,8 @@ readme_script() {
     marks) SCRIPT="frame:$FRAME;wait:700;locate:numberTool;locate:textTool;locate:selectTool;mark:framed";;
     # the frame moved and resized by real drags, then Undo pressed twice: it goes back, step by step
     undo) SCRIPT="frame:$FRAME;wait:700;mark:framed;wait:400;framerect;mark:moved;wait:500;locate:undoButton;mark:undo1;wait:500;locate:undoButton;mark:undo2";;
+    # a box drawn with square corners, then the Corners menu's 24 px, and a round box drawn beside it
+    corners) SCRIPT="frame:$FRAME;wait:700;locate:rectangleTool;locate:selectTool;mark:framed;wait:400;locate:optionCorners;mark:drawn;wait:700;locate:cornerRadius24;mark:cornersmenu;wait:300;locate:selectTool;mark:rounded";;
     # a text box, then the Text tool's Align menu: Center, then Middle
     align) SCRIPT="frame:$FRAME;wait:700;locate:textTool;locate:selectTool;mark:framed;wait:400;locate:optionAlign;mark:typed;wait:700;locate:align-4;mark:alignmenu;wait:600;locate:optionAlign;mark:centered;wait:700;locate:align-128;mark:vmenu";;
     private) SCRIPT="frame:$FRAME;wait:700;locate:hidePrivateInfo;mark:framed";;
@@ -249,6 +251,15 @@ readme_step() {
       glide $((RX + RW)) $((RY + RH)) 600; hold 250; drag_to $((RX + RW + 90)) $((RY + RH + 50)) 700; hold 800; film_mark changed;;
     undo:undo1) glide_to undoButton 700; hold 200; press; hold 1000;;
     undo:undo2) glide_to undoButton 500; hold 200; press; hold 1800; film_end;;
+
+    corners:framed)
+      feed "move 560 610"; R_PX=560; R_PY=610; film start corners 25; hold 400
+      glide_to rectangleTool 650; hold 150; press; hold 450
+      glide 120 392 600; hold 200; drag_to 330 510 700; hold 700;;
+    corners:drawn)       glide_to optionCorners 650; hold 150; press; hold 1100; film_mark cornersmenu;;
+    corners:cornersmenu) glide_to cornerRadius24 550; hold 200; press; hold 700
+                         glide 400 392 650; hold 200; drag_to 610 510 700; hold 900; film_mark rounded;;
+    corners:rounded)     glide_to selectTool 700; hold 150; press; hold 1800; film_end;;
 
     align:framed)
       feed "move 560 610"; R_PX=560; R_PY=610; film start align 25; hold 400
