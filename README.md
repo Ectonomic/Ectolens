@@ -62,7 +62,6 @@ Ectolens started from it, the biggest first. Each row links to its section.
 | [Captures for AI agents](#captures-for-ai-agents) | ❌ No | ✅ Yes: an agent such as Claude Code can ask for a picture, a recording or the words on screen, through an MCP server that's off until you turn it on. Each request opens in your overlay with the agent's reason, a picture's private information blurred, and nothing reaches the agent until you press Send |
 | [Text on a capture](#labels-badges-and-text-boxes) | A label whose line runs on until you break it | A label from a click, or a box from a drag: its words wrap as you type and wrap again when you resize it |
 | [Undo and Redo](#undo-and-redo) | Marks only | Marks, plus the frame's moves and resizes |
-| [Keeping a frame's proportions](#keep-a-frames-proportions) | ❌ No: Shift shows a magnifier | ✅ Yes: Shift keeps the frame's proportions while you resize it, and draws a new frame as a square; Ctrl shows the magnifier |
 | [Recording sound](#separate-sound-tracks) | System sound and microphone mixed into one track | The mixed track, plus a track for each if you want |
 | [Capture sizes](#exact-capture-sizes) | ❌ No | ✅ Yes: type a width and height or pick one (Full HD, QHD, square, phone and more), and Ectolens resizes the window you're capturing to exactly that size, then puts it back |
 | [Color picker, ruler and pinning](#pick-a-color-measure-read-a-qr-code-pin) | ❌ No | ✅ Yes: Pick Color, Measure and Pin |
@@ -70,6 +69,7 @@ Ectolens started from it, the biggest first. Each row links to its section.
 | [Dropped frames](#pause-crash-safe-mp4-and-dropped-frames) | ❌ No | ✅ Yes: counted on the recording bar |
 | [Text alignment](#labels-badges-and-text-boxes) | Always left | Left, center or right; in a box, also top, middle or bottom |
 | [Rounded boxes](#rounded-corners-for-boxes) | ❌ No: square corners only | ✅ Yes: Corners in the Rectangle tool's options rounds a box's corners, and they stay round when you resize the box |
+| [Keeping a frame's proportions](#keep-a-frames-proportions) | ❌ No | ✅ Yes: hold Shift while resizing |
 | [Sharing](#what-a-capture-does-next) | Every share service KDE has, including public Imgur uploads | Only the services that work on your computer |
 
 The pictures below with a divider sweeping across them show the same moment
@@ -80,8 +80,8 @@ the same desktop.
 
 Ectolens makes capturing quicker than in Spectacle. A click frames a window,
 Capture and Record sit side by side for the same frame, fewer buttons stand
-around it, Undo and Redo take back the frame's moves as well as your marks,
-and Shift keeps a frame's proportions as you resize it.
+around it, and Undo and Redo take back the frame's moves as well as your
+marks.
 
 ### Capture or record a window with a click
 
@@ -100,20 +100,6 @@ and resizes in the order you made them. In Spectacle they take back only the
 marks.
 
 <img src="docs/pictures/readme-frame-undo.webp" width="100%" alt="The terminal framed. The frame is dragged over the editor, then its corner is pulled out to make it larger. Undo on the toolbar, clicked twice, takes back the resize and then the move, and the frame is back on the terminal">
-
-### Keep a frame's proportions
-
-Hold Shift while you drag a corner of the frame and it keeps its
-proportions. Drag an edge and the other two sides grow or shrink evenly to
-match. Drawing a new frame with Shift held makes a square. You can press or
-let go of Shift partway through a drag. In Spectacle, Shift shows a
-magnifier instead.
-
-The magnifier is on Ctrl in Ectolens. Hold Ctrl while you frame and it shows
-the pixels under the pointer at three times their size, so you can land an
-edge on an exact pixel. It outlines the pixel it aims at and shows that
-pixel's position under it. A shortcut such as Ctrl+Z doesn't bring it up.
-Settings › General can show it always or never instead.
 
 ### Capture or record the same frame
 
@@ -162,6 +148,12 @@ YouTube, whose Google sign-in Google blocks. Copy to clipboard and Save as are
 left out too, since After Capture has rows of its own for them. Send via Email
 is listed only when an email app is set to open email links, and Send to Device
 only when KDE Connect has a paired device.
+
+### Keep a frame's proportions
+
+Hold Shift while you resize the frame and it keeps its proportions; a new
+frame drawn with Shift is a square. The magnifier, which Shift showed in
+Spectacle, is on Ctrl.
 
 ## Improved UI and user experience
 
