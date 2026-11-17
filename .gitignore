@@ -42,3 +42,6 @@ __pycache__/
 design/mock/mark-round-1.html
 design/mock/_marks/build.py
 design/mock/_marks/explore.py
+design/mock/_marks/lenses.py
+design/mock/_marks/round2.py
+design/mock/mark-round-2.html
