@@ -5,6 +5,7 @@
 
 #include <QColor>
 #include <QElapsedTimer>
+#include <QImage>
 #include <QObject>
 #include <QPointer>
 #include <QQmlEngine>
@@ -119,6 +120,8 @@ public:
     // ── Pin ──
     /// Float what is framed above your windows, and close the overlay.
     Q_INVOKABLE void pin(const QRectF &logicalFrame);
+    /// Ectolens window: pin the whole picture with its marks where it was captured; the window stays
+    Q_INVOKABLE void pinPicture();
 
     // ── Open with and Share ──
     /// Apps that open images: [{id, name, icon}]. The Ectolens window is id "".
@@ -170,6 +173,9 @@ Q_SIGNALS:
     void overlayModeChanged();
 
 private:
+    // Pick Color: the picture as seen, rendered with its marks (cleared when they change)
+    mutable QImage m_seen;
+    mutable bool m_seenWatched = false;
     explicit CaptureTools(QObject *parent = nullptr);
     void runKWinScript(const QString &source);
     void finishResize(const QString &uuid, const QSize &wanted, int triesLeft, int generation);

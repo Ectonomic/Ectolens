@@ -359,7 +359,11 @@ void next()
         const QString item = arg.section(u',', 0, 0), prop = arg.section(u',', 1);
         if (auto window = ViewerWindow::instance(); window && window->rootObject()) {
             if (auto o = window->rootObject()->findChild<QObject *>(item)) {
-                say(u"ECTOLENS-WPROP %1 %2 %3"_s.arg(item, prop, o->property(prop.toLatin1().constData()).toString()));
+                const QVariant v = o->property(prop.toLatin1().constData());
+                // a point reads as "X,Y" (a QVariant's own text is empty for one)
+                const QString text = v.metaType() == QMetaType::fromType<QPointF>() ? u"%1,%2"_s.arg(v.toPointF().x()).arg(v.toPointF().y())
+                                                                                    : v.toString();
+                say(u"ECTOLENS-WPROP %1 %2 %3"_s.arg(item, prop, text));
             }
         }
         later(100);

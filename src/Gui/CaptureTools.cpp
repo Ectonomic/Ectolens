@@ -90,8 +90,14 @@ struct Frozen {
 };
 Frozen frozen()
 {
+    // the picture as cut to the canvas, its top left at the canvas's: after a crop in the
+    // Ectolens window the canvas is part of the base image (it was the base image's corner)
     auto doc = SpectacleCore::instance()->annotationDocument();
-    return {doc->baseImage(), doc->imageDpr() > 0 ? doc->imageDpr() : 1.0, doc->canvasRect()};
+    QImage image = doc->canvasBaseImage();
+    if (image.isNull()) {
+        image = doc->baseImage();
+    }
+    return {image, doc->imageDpr() > 0 ? doc->imageDpr() : 1.0, doc->canvasRect()};
 }
 QRect toPixels(const Frozen &f, const QRectF &logical)
 {
@@ -444,7 +450,17 @@ void CaptureTools::revertResizedWindow()
 
 QColor CaptureTools::colorAt(const QPointF &logicalGlobal) const
 {
-    const Frozen f = frozen();
+    // what is seen there, marks and all: the picture rendered with its marks, kept until they change
+    auto doc = SpectacleCore::instance()->annotationDocument();
+    if (!m_seenWatched) {
+        m_seenWatched = true;
+        connect(doc, &AnnotationDocument::repaintNeeded, this, [this] { m_seen = {}; });
+        connect(doc, &AnnotationDocument::canvasRectChanged, this, [this] { m_seen = {}; });
+    }
+    if (m_seen.isNull()) {
+        m_seen = doc->renderToImage();
+    }
+    const Frozen f{m_seen, doc->imageDpr() > 0 ? doc->imageDpr() : 1.0, doc->canvasRect()};
     if (f.image.isNull()) {
         return {};
     }
@@ -576,7 +592,8 @@ void CaptureTools::hidePrivateInfo(const QRectF &logicalFrame)
     const int picture = m_frozenPicture;
     using Found = std::optional<QList<QRect>>; // empty when the text reader could not start
     auto watcher = new QFutureWatcher<Found>(this);
-    connect(watcher, &QFutureWatcher<Found>::finished, this, [this, watcher, f, px, upscale, generation, picture, asked] {
+    const bool wholePicture = logicalFrame.isEmpty();
+    connect(watcher, &QFutureWatcher<Found>::finished, this, [this, watcher, f, px, upscale, generation, picture, asked, wholePicture] {
         const Found result = watcher->result();
         watcher->deleteLater();
         if (generation != m_pictureGeneration) {
@@ -615,8 +632,10 @@ void CaptureTools::hidePrivateInfo(const QRectF &logicalFrame)
         m_blurDepthAfter = doc->undoStackDepth();
         m_blurFound = found.size();
         m_blursOff = false;
-        m_hideResult = found.isEmpty() ? i18nc("@info", "Found nothing private in the frame.")
-                                       : i18ncp("@info", "Blurred %1 private item.", "Blurred %1 private items.", found.size());
+        // no frame asked for: the whole picture, from the Ectolens window
+        m_hideResult = !found.isEmpty() ? i18ncp("@info", "Blurred %1 private item.", "Blurred %1 private items.", found.size())
+            : wholePicture                ? i18nc("@info", "Found nothing private in the picture.")
+                                          : i18nc("@info", "Found nothing private in the frame.");
         m_hiding = false;
         Q_EMIT hidingPrivateInfoChanged();
     });
@@ -639,6 +658,19 @@ void CaptureTools::pin(const QRectF &logicalFrame)
     PinWindow::pin(image, frame);
     TestScript::report(u"ECTOLENS-PINNED %1 %2"_s.arg(image.width()).arg(image.height()));
     SpectacleCore::instance()->closeOverlayQuietly();
+}
+
+void CaptureTools::pinPicture()
+{
+    auto doc = SpectacleCore::instance()->annotationDocument();
+    const Frozen f = frozen();
+    if (f.image.isNull()) {
+        return;
+    }
+    QImage image = doc->renderToImage();
+    image.setDevicePixelRatio(f.dpr);
+    PinWindow::pin(image, f.canvas);
+    TestScript::report(u"ECTOLENS-PINNED %1 %2"_s.arg(image.width()).arg(image.height()));
 }
 
 // ── Open with and Share ──

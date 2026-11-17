@@ -201,6 +201,8 @@ qt_target_qml_sources(ectolens
     Gui/EctoMenuSeparator.qml
     Gui/EctoPick.qml
     Gui/EctoRow.qml
+    Gui/EctoPickedColor.qml
+    Gui/EctoMeasure.qml
     Gui/EctoSegmented.qml
     Gui/EctoSeparator.qml
     Gui/EctoSlider.qml

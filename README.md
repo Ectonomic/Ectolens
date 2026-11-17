@@ -214,9 +214,10 @@ menu open, so you can try a few.
 Spectacle's window opens on a toolbar of actions, with marking behind its
 Edit button. Ectolens's window has the marking tools in its top bar from the
 start, Copy, Save and Extract Text at the bottom, and a line saying what
-After Capture did.
+After Capture did. The overlay's Hide Private Info, Pin, Pick Color and
+Measure sit beside Extract Text and work on the whole picture.
 
-<img src="docs/pictures/readme-vs-window.webp" width="100%" alt="The window, the divider sweeping from Spectacle to Ectolens. Spectacle: a toolbar of save, copy and export buttons, Edit, New Screenshot, New Recording and Options over the marked capture. Ectolens: the marking tools in the top bar, a line saying the capture was copied to the clipboard, and Copy, Save, Extract Text and New Capture at the bottom">
+<img src="docs/pictures/readme-vs-window.webp" width="100%" alt="The window, the divider sweeping from Spectacle to Ectolens. Spectacle: a toolbar of save, copy and export buttons, Edit, New Screenshot, New Recording and Options over the marked capture. Ectolens: the marking tools in the top bar, a line saying the capture was copied to the clipboard, and Copy, Save, Extract Text, Hide Private Info, Pin, Pick Color, Measure and New Capture at the bottom">
 
 ### Ecto's look, or KDE's
 
@@ -235,7 +236,7 @@ The Ectolens window follows Plasma's color scheme: dark in a dark scheme, and
 light in a light one.
 
 <p>
-  <img src="docs/pictures/readme-window.webp" width="49%" alt="The Ectolens window, dark, with the marked terminal capture, the marking tools above it, and Copy, Save, Extract Text and New Capture below">
+  <img src="docs/pictures/readme-window.webp" width="49%" alt="The Ectolens window, dark, with the marked terminal capture, the marking tools above it, and Copy, Save, Extract Text, Hide Private Info, Pin, Pick Color, Measure and New Capture below">
   <img src="docs/pictures/readme-window-light.webp" width="49%" alt="The same window in a light color scheme">
 </p>
 
@@ -470,8 +471,8 @@ claude mcp add ectolens -- /path/to/ectolens-mcp
 ## Status
 
 Ectolens is built and tested on Plasma 6.7 on Wayland, with Qt 6.11, and its
-install is checked on Plasma 6.8 too ([Installing](#installing)). There are no
-releases yet: the Fedora package is built from the latest code. Its new words
+install is checked on Plasma 6.8 too ([Installing](#installing)). This is
+Ectolens 1.0.0, and the Fedora package is built from the latest code. Its new words
 are in English only. [docs/deferred.md](docs/deferred.md) lists what is
 unfinished, what no test covers yet, and where Ectolens differs from its
 design documents.

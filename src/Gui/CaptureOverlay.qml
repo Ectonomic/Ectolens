@@ -288,8 +288,7 @@ MouseArea {
     property point measureEnd: Qt.point(-1, -1)
     readonly property color pickedColor: root.mode === "color" && toolPoint.x >= 0 ? CaptureTools.colorAt(toolPoint) : "transparent"
     function hex(c) {
-        const h = v => ("0" + Math.round(v * 255).toString(16)).slice(-2)
-        return ("#" + h(c.r) + h(c.g) + h(c.b)).toUpperCase()
+        return EctoTheme.hex(c)
     }
     MouseArea {
         id: toolArea
@@ -472,88 +471,22 @@ MouseArea {
         }
 
         // Pick Color: the color under the pointer, beside the magnifier
-        EctoRow {
+        EctoPickedColor {
             visible: magnifierLoader.picking
             z: 101
             x: magnifierLoader.x
             y: magnifierLoader.y + magnifierLoader.height + 6
-            EctoLabel {
-                Rectangle {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 16
-                    height: 16
-                    radius: 4
-                    color: root.pickedColor
-                    border.width: 1
-                    border.color: root.t.borderStrong
-                }
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: root.hex(root.pickedColor)
-                    color: root.t.fg
-                    font.family: EctoTheme.mono
-                    font.pixelSize: 12
-                    font.weight: Font.Medium
-                }
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    leftPadding: 2
-                    text: i18nc("@info", "Click to copy")
-                    color: root.t.fgSubtle
-                    font.family: EctoTheme.sans
-                    font.pixelSize: 12
-                }
-            }
+            color: root.pickedColor
         }
 
         // Measure: a line between two points and its length in pixels
-        Shape {
-            visible: root.mode === "measure" && root.measureStart.x >= 0
+        EctoMeasure {
+            visible: root.mode === "measure"
             anchors.fill: parent
-            preferredRendererType: Shape.CurveRenderer
-            ShapePath {
-                strokeColor: EctoTheme.accent
-                strokeWidth: 1.5
-                fillColor: "transparent"
-                capStyle: ShapePath.RoundCap
-                startX: root.measureStart.x
-                startY: root.measureStart.y
-                PathLine { x: root.measureEnd.x; y: root.measureEnd.y }
-            }
-        }
-        Repeater {
-            model: root.mode === "measure" && root.measureStart.x >= 0 ? [root.measureStart, root.measureEnd] : []
-            Rectangle {
-                required property point modelData
-                x: modelData.x - 4
-                y: modelData.y - 4
-                width: 8
-                height: 8
-                radius: 4
-                color: EctoTheme.accent
-                border.width: 1
-                border.color: "#0a0a0a"
-            }
-        }
-        EctoRow {
-            id: measureLabel
-            readonly property real dx: Math.abs(root.measureEnd.x - root.measureStart.x) * contextWindow.devicePixelRatio
-            readonly property real dy: Math.abs(root.measureEnd.y - root.measureStart.y) * contextWindow.devicePixelRatio
-            visible: root.mode === "measure" && root.measureStart.x >= 0 && (dx > 0 || dy > 0)
             z: 101
-            x: (root.measureStart.x + root.measureEnd.x) / 2 - width / 2
-            y: Math.min(root.measureStart.y, root.measureEnd.y) - height - 10
-            EctoLabel {
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: i18nc("@info %1 the distance, %2×%3 across and down, in pixels", "%1 px  ·  %2 × %3",
-                                String(Math.round(Math.hypot(measureLabel.dx, measureLabel.dy))), String(Math.round(measureLabel.dx)), String(Math.round(measureLabel.dy)))
-                    color: root.t.fg
-                    font.family: EctoTheme.mono
-                    font.pixelSize: 12
-                    font.weight: Font.Medium
-                }
-            }
+            start: root.measureStart
+            end: root.measureEnd
+            pixelRatio: contextWindow.devicePixelRatio
         }
 
         // The size while dragging a frame

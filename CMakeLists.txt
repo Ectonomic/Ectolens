@@ -1,6 +1,7 @@
 cmake_minimum_required (VERSION 3.16 FATAL_ERROR)
 # Managed by release script
-set(PROJECT_VERSION "6.8.80")
+# Ectolens's own version (2026-11-17; it carried Spectacle's development number, 6.8.80, before)
+set(PROJECT_VERSION "1.0.0")
 set(SPECTACLE_VERSION ${PROJECT_VERSION})
 
 # Spectacle project

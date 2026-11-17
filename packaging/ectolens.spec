@@ -12,7 +12,10 @@
 %{!?snapinfo: %global snapinfo 0}
 
 Name:           ectolens
-Version:        6.8.80
+# Epoch 1: Ectolens's own version (1.0.0) follows packages numbered after Spectacle's (6.8.80),
+# so an installed snapshot upgrades to it
+Epoch:          1
+Version:        1.0.0
 Release:        0.%{snapinfo}%{?dist}
 Summary:        Screenshots and screen recordings for KDE Plasma
 License:        GPL-2.0-or-later AND LGPL-2.0-or-later AND (LGPL-2.1-only OR LGPL-3.0-only) AND LGPL-2.1-or-later AND OFL-1.1
@@ -94,5 +97,8 @@ install -Dm644 -t %{buildroot}%{_datadir}/%{name}/install tools/install/common.s
 %{_userunitdir}/app-com.ectonomic.ectolens.service
 
 %changelog
+* Tue Nov 17 2026 Ectolens contributors - 1:1.0.0-0
+- Ectolens's own version, 1.0.0, in place of Spectacle's development number
+
 * Thu Nov 05 2026 Ectolens contributors - 6.8.80-0
 - First package: snapshots of the ectolens branch, built in COPR

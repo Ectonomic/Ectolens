@@ -476,6 +476,52 @@ Rectangle {
                 onClicked: SpectacleCore.startOcrExtraction()
                 onArrowClicked: languageMenu.toggleAt(extractSplit, "above")
             }
+            // Ectolens: the overlay's picture tools, for the whole picture
+            EctoSeparator { visible: root.picture }
+            EctoButton {
+                objectName: "windowHidePrivateInfo"
+                visible: root.picture
+                iconName: "view-hidden"
+                iconOnly: true
+                text: i18nc("@action", "Hide Private Info")
+                toolTipText: i18nc("@info:tooltip", "Hide Private Info: blur email addresses, phone numbers, street addresses, keys, tokens, passwords, home-folder paths and your name")
+                enabled: SpectacleCore.ocrAvailable && !CaptureTools.hidingPrivateInfo
+                current: CaptureTools.hidingPrivateInfo && root.hidingHere
+                onClicked: {
+                    root.view.inspect = ""
+                    root.hidingHere = true
+                    CaptureTools.hidePrivateInfo(Qt.rect(0, 0, 0, 0))
+                }
+            }
+            EctoButton {
+                objectName: "windowPin"
+                visible: root.picture
+                iconName: "window-pin"
+                iconOnly: true
+                text: i18nc("@action", "Pin")
+                toolTipText: i18nc("@info:tooltip", "Pin: keep the picture floating above your windows")
+                onClicked: CaptureTools.pinPicture()
+            }
+            EctoButton {
+                objectName: "windowPickColor"
+                visible: root.picture
+                iconName: "color-picker"
+                iconOnly: true
+                text: i18nc("@action", "Pick Color")
+                toolTipText: i18nc("@info:tooltip", "Pick Color: click a pixel to copy its color")
+                current: root.view?.inspect === "color"
+                onClicked: root.view.inspect = root.view.inspect === "color" ? "" : "color"
+            }
+            EctoButton {
+                objectName: "windowMeasure"
+                visible: root.picture
+                iconName: "measure"
+                iconOnly: true
+                text: i18nc("@action", "Measure")
+                toolTipText: i18nc("@info:tooltip", "Measure: drag between two points; Shift keeps it straight")
+                current: root.view?.inspect === "measure"
+                onClicked: root.view.inspect = root.view.inspect === "measure" ? "" : "measure"
+            }
         }
         Row {
             anchors.right: parent.right
@@ -525,6 +571,26 @@ Rectangle {
             }
         }
     }
+    // Ectolens: Hide Private Info started from this window says what it found here
+    property bool hidingHere: false
+    Connections {
+        target: CaptureTools
+        function onHidingPrivateInfoChanged() {
+            if (!CaptureTools.hidingPrivateInfo && root.hidingHere) {
+                root.hidingHere = false
+                if (CaptureTools.hideResult.length > 0) {
+                    InlineMessageModel.push(InlineMessageModel.Hidden, CaptureTools.hideResult)
+                }
+            }
+        }
+    }
+    Connections {
+        target: root.view
+        ignoreUnknownSignals: true
+        function onColorCopied(hex) {
+            InlineMessageModel.push(InlineMessageModel.Copied, i18nc("@info %1 a color like #A1B2C3", "Copied %1", hex))
+        }
+    }
     function newCapture(mode) {
         SpectacleCore.takeNewScreenshot(mode, Math.round(Settings.captureDelay * 1000), Settings.includePointer, Settings.includeDecorations, Settings.includeShadow)
     }
@@ -538,6 +604,11 @@ Rectangle {
         EctoSplitButton { iconName: "document-save"; text: i18nc("@action:button", "Save") }
         EctoSeparator {}
         EctoSplitButton { iconName: "document-scan"; text: i18nc("@action", "Extract Text") }
+        EctoSeparator {}
+        EctoButton { iconName: "view-hidden"; iconOnly: true; text: "Hide" }
+        EctoButton { iconName: "window-pin"; iconOnly: true; text: "Pin" }
+        EctoButton { iconName: "color-picker"; iconOnly: true; text: "Pick" }
+        EctoButton { iconName: "measure"; iconOnly: true; text: "Measure" }
         Item { width: 40; height: 1 }
         EctoButton { quiet: true; text: "100%" }
         EctoSplitButton { iconName: "camera-photo"; text: i18nc("@action:button", "New Capture") }

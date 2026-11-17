@@ -12,6 +12,7 @@ import org.kde.kquickimageeditor.ectolens
 // Can't use ScrollView because ScrollView prevents mice from being able to drag the view
 EmptyPage {
     id: root
+    objectName: "screenshotView"
 
     // Ectolens: Fit shows the whole picture with room around it, and never enlarges it past its size.
     readonly property real fitZoom: Math.min(1, (flickable.width - 48) / SpectacleCore.annotationDocument.canvasRect.width,
@@ -21,6 +22,34 @@ EmptyPage {
     readonly property real currentZoom: annotationEditor.scale
     /// Ectolens: Fit follows the window as it resizes; a zoom from the menu or the keys holds.
     property bool fitMode: true
+
+    // Ectolens: Pick Color and Measure on the picture, as in the overlay ("color", "measure", or "").
+    // Points are in the picture's own units from its top left (the picture item's coordinates).
+    property string inspect: ""
+    property point inspectPoint: Qt.point(-1, -1)
+    property point inspectViewPoint: Qt.point(-1, -1) // the pointer, in this view's coordinates
+    property point measureStart: Qt.point(-1, -1)
+    property point measureEnd: Qt.point(-1, -1)
+    readonly property real imageDpr: SpectacleCore.annotationDocument.imageDpr > 0 ? SpectacleCore.annotationDocument.imageDpr : 1
+    readonly property color pickedColor: inspect === "color" && inspectPoint.x >= 0 ? CaptureTools.colorAt(toCanvas(inspectPoint)) : "transparent"
+    /// a click with Pick Color copied this color
+    signal colorCopied(string hex)
+    onInspectChanged: {
+        measureStart = Qt.point(-1, -1)
+        measureEnd = Qt.point(-1, -1)
+        inspectPoint = Qt.point(-1, -1)
+        // the keys come here while picking or measuring, so Esc leaves them
+        if (inspect !== "") {
+            inspectArea.forceActiveFocus()
+        }
+    }
+    function toCanvas(p) {
+        const c = SpectacleCore.annotationDocument.canvasRect
+        return Qt.point(c.x + p.x, c.y + p.y)
+    }
+    function toView(p) {
+        return Qt.point(annotationEditor.x + p.x * annotationEditor.scale, annotationEditor.y + p.y * annotationEditor.scale)
+    }
     function fit() {
         fitMode = true
         annotationEditor.scale = Qt.binding(() => root.fitZoom)
@@ -84,6 +113,7 @@ EmptyPage {
         clip: contextWindow.annotating
         interactive: contextWindow.annotating
             && SpectacleCore.annotationDocument.tool.type === AnnotationTool.NoTool
+            && root.inspect === ""
         boundsBehavior: Flickable.StopAtBounds
         rebound: Transition {} // Instant transition. Null doesn't do this.
         contentWidth: Math.max(width, SpectacleCore.annotationDocument.canvasRect.width * annotationEditor.scale)
@@ -196,6 +226,70 @@ EmptyPage {
             Keys.priority: Keys.AfterItem
         }
 
+        // Ectolens: Pick Color and Measure take the pointer over the picture
+        MouseArea {
+            id: inspectArea
+            objectName: "inspectArea"
+            anchors.fill: annotationEditor
+            transformOrigin: annotationEditor.transformOrigin
+            scale: annotationEditor.scale
+            z: 2
+            enabled: root.inspect !== ""
+            visible: enabled
+            hoverEnabled: true
+            cursorShape: Qt.CrossCursor
+            Keys.onEscapePressed: root.inspect = ""
+            function track(x, y) {
+                root.inspectPoint = Qt.point(x, y)
+                root.inspectViewPoint = mapToItem(root, x, y)
+            }
+            function snapped(m) {
+                let p = Qt.point(m.x, m.y)
+                if (m.modifiers & Qt.ShiftModifier) {
+                    // Shift keeps the line straight across or straight down
+                    if (Math.abs(p.x - root.measureStart.x) > Math.abs(p.y - root.measureStart.y)) {
+                        p.y = root.measureStart.y
+                    } else {
+                        p.x = root.measureStart.x
+                    }
+                }
+                return p
+            }
+            onPositionChanged: m => {
+                track(m.x, m.y)
+                if (root.inspect === "measure" && pressed) {
+                    root.measureEnd = snapped(m)
+                }
+            }
+            onExited: root.inspectPoint = Qt.point(-1, -1)
+            onPressed: m => {
+                track(m.x, m.y)
+                if (root.inspect === "measure") {
+                    root.measureStart = Qt.point(m.x, m.y)
+                    root.measureEnd = root.measureStart
+                }
+            }
+            onClicked: m => {
+                if (root.inspect === "color") {
+                    const hex = EctoTheme.hex(CaptureTools.colorAt(root.toCanvas(Qt.point(m.x, m.y))))
+                    CaptureTools.copyText(hex)
+                    root.colorCopied(hex)
+                    root.inspect = ""
+                }
+            }
+        }
+
+        // Measure's line, drawn at the window's scale so it stays thin at any zoom
+        EctoMeasure {
+            visible: root.inspect === "measure"
+            width: flickable.contentWidth
+            height: flickable.contentHeight
+            z: 3
+            start: root.measureStart.x >= 0 ? root.toView(root.measureStart) : Qt.point(-1, -1)
+            end: root.toView(root.measureEnd)
+            pixelRatio: root.imageDpr / annotationEditor.scale
+        }
+
         CropTool {
             id: cropTool
             // Ectolens: the crop frame and its handles in the accent, like the overlay's frame
@@ -230,6 +324,38 @@ EmptyPage {
                 }
             }
         }
+    }
+
+
+    // Ectolens: Pick Color's magnifier and readout beside the pointer, as in the overlay
+    Loader {
+        id: windowMagnifier
+        z: 10
+        active: root.inspect === "color" && root.inspectPoint.x >= 0
+        readonly property real gap: Kirigami.Units.gridUnit
+        x: {
+            const w = item ? item.width : 0
+            const px = root.inspectViewPoint.x
+            return px + gap + w > root.width ? px - gap - w : px + gap
+        }
+        y: {
+            const h = (item ? item.height : 0) + 40
+            const py = root.inspectViewPoint.y
+            return py + gap + h > root.height ? Math.max(0, py - gap - h) : py + gap
+        }
+        sourceComponent: Magnifier {
+            viewport: annotationEditor
+            targetPoint: root.inspectPoint
+            screenRect: Qt.rect(0, 0, annotationEditor.width, annotationEditor.height)
+            pixelRatio: root.imageDpr
+        }
+    }
+    EctoPickedColor {
+        visible: windowMagnifier.active
+        z: 10
+        x: windowMagnifier.x
+        y: windowMagnifier.y + windowMagnifier.height + 6
+        color: root.pickedColor
     }
 
 }

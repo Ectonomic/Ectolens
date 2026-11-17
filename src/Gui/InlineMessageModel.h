@@ -47,6 +47,8 @@ public:
         Scanned = InformationalType + 3,
         // Ectolens: text read from the picture; its data is the text, for Show Text.
         Extracted = InformationalType + 4,
+        // Ectolens: what Hide Private Info found in the window's picture
+        Hidden = InformationalType + 5,
     };
     Q_ENUM(InlineMessageType)
 

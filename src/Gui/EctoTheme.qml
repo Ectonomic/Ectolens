@@ -82,6 +82,11 @@ QtObject {
     function of(win) {
         return win && win.isViewer ? window : overlay
     }
+    /// a color as Pick Color copies it: #RRGGBB, in capitals
+    function hex(c) {
+        const h = v => ("0" + Math.round(v * 255).toString(16)).slice(-2)
+        return ("#" + h(c.r) + h(c.g) + h(c.b)).toUpperCase()
+    }
 
     /// The marking tools' colors (the color menu's swatches): Ecto green first, then a hue
     /// circle of clear, saturated colors, then white to black. Text and Number start in Ecto green.

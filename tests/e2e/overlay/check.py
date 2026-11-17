@@ -546,6 +546,36 @@ if scenario == 'window':
         (green > 40, f'the title bar shows the Ectolens icon ({green} lime pixels)', ''),
         (red == 0, f'no red fringe on the icon ({red} red pixels)', ''),
     ]
+    # the overlay's picture tools in the window, clicked with the real pointer, for the whole picture
+    wprops = {}
+    for l in lines('ECTOLENS-WPROP'):
+        if len(l) >= 2 and l[0] == 'screenshotView':
+            wprops.setdefault(l[1], []).append(' '.join(l[2:]))
+    hiding = lines('ECTOLENS-HIDING')
+    clip_hex = [c[1] for c in lines('ECTOLENS-CLIPBOARD') if c[:1] == ['text'] and len(c) > 1 and c[1].startswith('#')]
+    pick_ok, pick_why = False, 'no pick'
+    if clip_hex and __import__('os').path.exists(f'{out}/wpick-screen.png'):
+        px, py = (int(v) for v in open(f'{out}/wpick-at.txt').read().split())
+        seen = Image.open(f'{out}/wpick-screen.png').convert('RGB').getpixel((px, py))
+        got = tuple(int(clip_hex[-1][i:i + 2], 16) for i in (1, 3, 5))
+        pick_ok = max(abs(a - b) for a, b in zip(seen, got)) <= 12
+        pick_why = f'copied {clip_hex[-1]}, the screen shows {seen} there'
+    def pt(v):
+        nums = [float(x) for x in __import__('re').findall(r'-?[0-9.]+', v)]
+        return nums[:2]
+    ms, me = (pt(wprops.get(k, [''])[-1]) for k in ('measureStart', 'measureEnd'))
+    zoom = float(wprops.get('currentZoom', ['0'])[-1] or 0)
+    across = abs(me[0] - ms[0]) * zoom if len(ms) == 2 and len(me) == 2 else -1
+    results += [
+        (bool(hiding) and bool(lines('ECTOLENS-HIDDEN')), "Hide Private Info in the window reads the whole picture and says what it found",
+         f"{hiding[-1:]} {lines('ECTOLENS-HIDDEN')[-1:]}"),
+        (pick_ok, "Pick Color in the window copies the color under the pointer", pick_why),
+        (len(wprops.get('inspect', [])) >= 1 and wprops['inspect'][0] == '', 'a click with Pick Color copies and leaves Pick Color', str(wprops.get('inspect'))),
+        (abs(across - 120) <= 2 and len(ms) == 2 and abs(me[1] - ms[1]) < 0.01, 'Measure in the window follows a real 120 px drag across, at the window\'s zoom',
+         f'start {ms}, end {me}, zoom {zoom}: {across:.1f} px on screen'),
+        (len(wprops.get('inspect', [])) == 2 and wprops['inspect'][1] == '', 'Esc leaves Measure (the report after Esc)', str(wprops.get('inspect'))),
+        (bool(lines('ECTOLENS-PINNED')), "Pin in the window pins the picture, and the window stays", str(lines('ECTOLENS-PINNED'))),
+    ]
     # the gear's Help entries, clicked with the real pointer: Help and Report a Bug open Ectolens's own
     # pages in the web browser (a stand-in that writes down what it was handed), About is Ectolens's
     opened = open(f'{out}/opened.txt').read().split() if __import__('os').path.exists(f'{out}/opened.txt') else []

@@ -36,7 +36,9 @@ Item {
         const n = Math.ceil(size / factor)
         return n % 2 === 1 ? n : n + 1
     }
-    readonly property real dpr: contextWindow.devicePixelRatio
+    /// the picture's pixels per unit here, for the readout: the screen's in the overlay, the picture's in the window
+    property real pixelRatio: contextWindow.devicePixelRatio
+    readonly property real dpr: pixelRatio
     /// the aimed pixel, in the screen's own pixels
     readonly property point pixel: Qt.point(Math.floor((targetPoint.x - screenRect.x) * dpr),
                                             Math.floor((targetPoint.y - screenRect.y) * dpr))
