@@ -73,12 +73,17 @@ stop_running() {
 }
 
 # Tell the session about added or removed files: menus and KWin's list of programs
-# (KSycoca), the D-Bus services, and systemd's user units.
+# (KSycoca), the D-Bus services, systemd's user units, and the icons programs already drew.
 reload_session() {
     command -v kbuildsycoca6 >/dev/null && kbuildsycoca6 >/dev/null 2>&1 || true
     if [ -n "${DBUS_SESSION_BUS_ADDRESS:-}${XDG_RUNTIME_DIR:+x}" ] && command -v gdbus >/dev/null; then
         gdbus call --session --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus \
             --method org.freedesktop.DBus.ReloadConfig >/dev/null 2>&1 || true
+        # the running taskbar, launcher and KRunner keep icons they have drawn in memory and
+        # only look again when KDE's icon loader says icons changed (as System Settings does
+        # when the icon theme changes); without this a new app icon shows only after a re-login
+        gdbus emit --session --object-path /KIconLoader \
+            --signal org.kde.KIconLoader.iconChanged 0 >/dev/null 2>&1 || true
     fi
     systemctl --user daemon-reload >/dev/null 2>&1 || true
 }
