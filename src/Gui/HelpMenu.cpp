@@ -10,6 +10,7 @@
 #include <KLocalizedString>
 
 #include <QApplication>
+#include <QDesktopServices>
 #include <QDialog>
 #include <QWindow>
 
@@ -18,6 +19,11 @@
 using namespace Qt::StringLiterals;
 
 static HelpMenu *s_instance = nullptr;
+
+// Ectolens: KDE's Help opens the local help:/ handbook and Report Bug KDE's bug form, which
+// Ectolens has neither of. Its guide is the README, its bug reports go to the repository's issues.
+static const auto s_guideUrl = u"https://github.com/Ectonomic/Ectolens#readme"_s;
+static const auto s_newIssueUrl = u"https://github.com/Ectonomic/Ectolens/issues/new"_s;
 
 static QObject *findWidgetOfType(const char *className)
 {
@@ -41,6 +47,17 @@ HelpMenu::HelpMenu(QWidget *parent)
     setIcon(QIcon::fromTheme(u"help-contents"_s));
     addActions(kHelpMenu->menu()->actions());
     connect(this, &QMenu::triggered, this, &HelpMenu::onTriggered);
+    if (auto help = kHelpMenu->action(KHelpMenu::menuHelpContents)) {
+        QObject::disconnect(help, nullptr, kHelpMenu.get(), nullptr);
+        help->setText(i18nc("@action:inmenu", "Ectolens Help"));
+        connect(help, &QAction::triggered, this, &HelpMenu::showAppHelp);
+    }
+    if (auto bug = kHelpMenu->action(KHelpMenu::menuReportBug)) {
+        QObject::disconnect(bug, nullptr, kHelpMenu.get(), nullptr);
+        connect(bug, &QAction::triggered, this, [] {
+            QDesktopServices::openUrl(QUrl(s_newIssueUrl));
+        });
+    }
 }
 
 HelpMenu::~HelpMenu()
@@ -66,7 +83,7 @@ HelpMenu *HelpMenu::instance()
 
 void HelpMenu::showAppHelp()
 {
-    kHelpMenu->appHelpActivated();
+    QDesktopServices::openUrl(QUrl(s_guideUrl));
 }
 
 void HelpMenu::trigger(KHelpMenu::MenuId id)

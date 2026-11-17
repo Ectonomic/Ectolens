@@ -750,17 +750,20 @@ Rectangle {
         EctoMenuSeparator {}
         EctoMenuItem {
             iconName: "help-contents"
+            objectName: "windowHelp"
             text: i18nc("@action:inmenu", "Ectolens Help")
             shortcutText: CaptureTools.keyText("F1")
             onClicked: CaptureTools.help("help")
         }
         EctoMenuItem {
             iconName: "tools-report-bug"
+            objectName: "windowBug"
             text: i18nc("@action:inmenu", "Report a Bug…")
             onClicked: CaptureTools.help("bug")
         }
         EctoMenuItem {
             iconName: "help-about"
+            objectName: "windowAbout"
             text: i18nc("@action:inmenu", "About Ectolens")
             onClicked: CaptureTools.help("about")
         }

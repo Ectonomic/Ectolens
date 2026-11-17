@@ -15,7 +15,10 @@
 #include "Platforms/VideoPlatform.h"
 #include "SpectacleCore.h"
 
+#include <KAboutData>
+#include <QApplication>
 #include <QDir>
+#include <QWidget>
 #include <QCoreApplication>
 #include <QGuiApplication>
 #include <QMouseEvent>
@@ -919,6 +922,29 @@ void next()
                         say(u"ECTOLENS-ANATOMY LOOK %1 %2"_s.arg(theme->property("sans").toString().remove(u' '), theme->property("mono").toString().remove(u' ')));
                     }
                 }
+            }
+        }
+        later(100);
+    } else if (name == u"aboutinfo") {
+        // the About data, and any About dialog showing: "ECTOLENS-ABOUT KEY VALUE" lines
+        const auto about = KAboutData::applicationData();
+        QStringList authors, credits;
+        for (const auto &p : about.authors()) {
+            authors << p.name();
+        }
+        for (const auto &p : about.credits()) {
+            credits << p.name();
+        }
+        say(u"ECTOLENS-ABOUT name %1"_s.arg(about.displayName()));
+        say(u"ECTOLENS-ABOUT description %1"_s.arg(about.shortDescription()));
+        say(u"ECTOLENS-ABOUT homepage %1"_s.arg(about.homepage()));
+        say(u"ECTOLENS-ABOUT bugs %1"_s.arg(about.bugAddress()));
+        say(u"ECTOLENS-ABOUT authors %1"_s.arg(authors.join(u'|')));
+        say(u"ECTOLENS-ABOUT credits %1"_s.arg(credits.join(u'|')));
+        say(u"ECTOLENS-ABOUT copyright %1"_s.arg(QString(about.copyrightStatement()).replace(u'\n', u' ')));
+        for (const auto w : QApplication::topLevelWidgets()) {
+            if (w->inherits("KAboutApplicationDialog") && w->isVisible()) {
+                say(u"ECTOLENS-ABOUT dialog %1"_s.arg(w->windowTitle()));
             }
         }
         later(100);

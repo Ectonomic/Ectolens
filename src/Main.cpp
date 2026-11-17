@@ -123,15 +123,23 @@ int main(int argc, char **argv)
     KLocalizedString::setApplicationDomain(QByteArrayLiteral("spectacle"));
     QCoreApplication::setOrganizationDomain(u"ectonomic.com"_s); // D-Bus name com.ectonomic.ectolens
 
+    // Ectolens: its own About (the README's credits), with Spectacle's authors credited for the
+    // program it is built on; bugs go to its repository, not KDE's
     KAboutData aboutData(u"ectolens"_s,
                          i18n("Ectolens"),
                          QStringLiteral(SPECTACLE_VERSION),
-                         i18n("Screenshots and screen recordings"),
+                         i18n("Screenshots and screen recordings for KDE Plasma, built on KDE's Spectacle"),
                          KAboutLicense::GPL_V2,
-                         i18n("© 2015 Boudhayan Gupta and the KDE Spectacle authors; Ectolens changes © 2026"));
-    aboutData.addAuthor(u"Boudhayan Gupta"_s, {}, u"bgupta@kde.org"_s);
-    aboutData.addAuthor(u"David Redondo"_s, {}, u"kde@david-redondo.de"_s);
-    aboutData.addAuthor(u"Noah Davis"_s, {}, u"noahadvs@gmail.com"_s);
+                         i18n("© 2026 the Ectolens authors\nSpectacle © 2015 Boudhayan Gupta and the KDE Spectacle authors"));
+    aboutData.setHomepage(u"https://github.com/Ectonomic/Ectolens"_s);
+    aboutData.setBugAddress("https://github.com/Ectonomic/Ectolens/issues");
+    aboutData.setOtherText(i18n("Ectolens is not a KDE project. Please report problems with Ectolens in its repository's issues, not to KDE."));
+    aboutData.addAuthor(u"Grant Garrison"_s);
+    aboutData.addAuthor(u"Claude"_s);
+    aboutData.addCredit(u"Boudhayan Gupta"_s, i18n("Spectacle"), u"bgupta@kde.org"_s);
+    aboutData.addCredit(u"David Redondo"_s, i18n("Spectacle"), u"kde@david-redondo.de"_s);
+    aboutData.addCredit(u"Noah Davis"_s, i18n("Spectacle"), u"noahadvs@gmail.com"_s);
+    aboutData.addCredit(i18n("The KDE community"), i18n("Spectacle, KPipeWire and KQuickImageEditor"));
     // Ectolens: KAboutData's own domain decides the app id Plasma and KWin see
     // (it was org.kde.ectolens, which matched no desktop file, so KWin refused
     // the screenshot permission and Print Screen showed nothing).

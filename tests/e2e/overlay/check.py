@@ -546,6 +546,19 @@ if scenario == 'window':
         (green > 40, f'the title bar shows the Ectolens icon ({green} lime pixels)', ''),
         (red == 0, f'no red fringe on the icon ({red} red pixels)', ''),
     ]
+    # the gear's Help entries, clicked with the real pointer: Help and Report a Bug open Ectolens's own
+    # pages in the web browser (a stand-in that writes down what it was handed), About is Ectolens's
+    opened = open(f'{out}/opened.txt').read().split() if __import__('os').path.exists(f'{out}/opened.txt') else []
+    about = {l[0]: ' '.join(l[1:]) for l in lines('ECTOLENS-ABOUT') if l}
+    results += [
+        (opened[:1] == ['https://github.com/Ectonomic/Ectolens#readme'], "Ectolens Help opens Ectolens's guide (the README), not KDE's help:/ handbook", str(opened)),
+        (opened[1:2] == ['https://github.com/Ectonomic/Ectolens/issues/new'], "Report a Bug opens a new issue in Ectolens's repository, not KDE's bug form", str(opened)),
+        (about.get('dialog') == 'About Ectolens', 'About Ectolens opens the About dialog', str(about.get('dialog'))),
+        (about.get('homepage') == 'https://github.com/Ectonomic/Ectolens' and about.get('bugs') == 'https://github.com/Ectonomic/Ectolens/issues',
+         "About names Ectolens's own home page and issues", str(about)),
+        ('Spectacle' not in about.get('authors', '') and 'Boudhayan Gupta' in about.get('credits', ''),
+         "About's authors are Ectolens's, with Spectacle's authors in its credits", f"authors {about.get('authors')}, credits {about.get('credits')}"),
+    ]
     report(results)
 def recording_length(what):
     """the saved file (recording.mp4) lasts as long as the recording ran, from the app's ECTOLENS-REC
