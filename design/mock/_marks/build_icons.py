@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Builds Ectolens's icon from glyphs.corners (mark round one, pulled in 2026-11-17): the Ecto splat with
+"""Builds Ectolens's icon from glyphs.corners (mark round one, pulled in 1.5 units 2026-11-17): the Ecto splat with
 viewfinder corners in the family's dark green, in the rounded box the family's app icons share: flat #0a0a0a
 filling the picture, corners of radius 14 in 64, the splat 0.607 of the box's width, centered. Up to 24 px the
 mark is larger in the box (0.80), so its corners stay readable. Each size KDE draws gets

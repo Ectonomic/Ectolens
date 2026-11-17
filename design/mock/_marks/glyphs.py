@@ -132,12 +132,13 @@ def screen_frame(px=64, cx=31.8, cy=29.6, ink=INK):
 
 def corners(px=64, w=None, h=None, arm=None, cx=31.8, cy=31.8, ink=INK):
     """Viewfinder corners: four rounded L's at the family's line weight. Below 32 px the frame opens wider and
-    the arms grow, so each corner stays an L instead of a dot. Pulled in 3 units on every side from round one
-    (2026-11-17), so no corner runs up against the splat's edge (at the small sizes they ran off it)."""
+    the arms grow, so each corner stays an L instead of a dot. Pulled in 1.5 units on every side from round one
+    (2026-11-17, arms 0.675 shorter), so no corner runs up against the splat's edge (at the small sizes they ran
+    off it); 3 units in sat too far inside the splat."""
     small = px < 32
-    w = w if w is not None else (26.0 if small else 24.0)
-    h = h if h is not None else (20.0 if small else 18.0)
-    arm = arm if arm is not None else (7.25 if small else 6.25)
+    w = w if w is not None else (29.0 if small else 27.0)
+    h = h if h is not None else (23.0 if small else 21.0)
+    arm = arm if arm is not None else (7.925 if small else 6.925)
     sw = weight(px); x0, y0, x1, y1 = cx - w/2, cy - h/2, cx + w/2, cy + h/2
     d = (f'M {x0} {y0+arm} V {y0} H {x0+arm} M {x1-arm} {y0} H {x1} V {y0+arm} '
          f'M {x1} {y1-arm} V {y1} H {x1-arm} M {x0+arm} {y1} H {x0} V {y1-arm}')
