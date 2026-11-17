@@ -1074,6 +1074,18 @@ if scenario == 'frameratio':
     check('Ctrl+Z, Ctrl still held after it, is a shortcut: no magnifier', mag('ctrlshortcut') == 'false', str(mag('ctrlshortcut')))
     check('a drag of an edge with Ctrl held shows the magnifier at once', mag('ctrldrag') == 'true', str(mag('ctrldrag')))
     check('letting go of the drag and Ctrl hides it', mag('ctrldragend') == 'false', str(mag('ctrldragend')))
+    # Ctrl and the wheel zoom the magnifier (from 3x: two notches up, then four down), the frame unchanged
+    factors = {}
+    for l in log.splitlines():
+        p = l.split()
+        if p[:1] == ['ECTOLENS-STEP']:
+            step = p[1]
+        elif p[:3] == ['ECTOLENS-PROP', 'magnifierView', 'factor'] and len(p) > 3:
+            factors[step] = p[3]
+    check('Ctrl and two notches of the wheel up zoom the magnifier in, 3x to 6x', factors.get('zoomin') == '6', str(factors))
+    check('four notches down zoom it out to the widest, 2x, and no further', factors.get('zoomout') == '2', str(factors))
+    check('zooming leaves the frame as it was', rect('ctrldragend') is not None and rect('zoomin') == rect('ctrldragend') and rect('zoomout') == rect('ctrldragend'),
+          f"{rect('ctrldragend')}, {rect('zoomin')}, {rect('zoomout')}")
     sys.exit(1 if fails else 0)
 
 if scenario == 'frameundo':

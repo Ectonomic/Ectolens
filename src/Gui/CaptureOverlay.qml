@@ -83,6 +83,23 @@ MouseArea {
     }
     readonly property real frameGap: 15 // the handle plus some air
 
+    // Ectolens: the magnifier's zoom, set by Ctrl and the wheel while it shows (SelectionEditor
+    // hears the wheel with the frame's other input; kept while the overlay is open); the frame
+    // doesn't change
+    readonly property var magnifierZooms: [2, 3, 4, 6, 8, 12, 16]
+    property int magnifierZoom: 3
+    Connections {
+        target: SelectionEditor
+        function onCtrlWheel(steps) {
+            if (!magnifierLoader.visible) {
+                return
+            }
+            const zooms = root.magnifierZooms
+            const i = zooms.indexOf(root.magnifierZoom)
+            root.magnifierZoom = zooms[Math.max(0, Math.min(zooms.length - 1, i + steps))]
+        }
+    }
+
     focus: true
     acceptedButtons: recording ? Qt.NoButton : Qt.LeftButton | Qt.RightButton
     hoverEnabled: !recording
@@ -450,6 +467,7 @@ MouseArea {
                 viewport: annotationsLoader.item
                 targetPoint: magnifierLoader.targetPoint
                 screenRect: screensRectItem.screenAt(magnifierLoader.targetPoint.x, magnifierLoader.targetPoint.y)
+                factor: root.magnifierZoom
             }
         }
 

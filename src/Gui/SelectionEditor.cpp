@@ -28,6 +28,7 @@
 #include <QQuickWindow>
 #include <QScreen>
 #include <QTimer>
+#include <QWheelEvent>
 #include <QtMath>
 #include <qnamespace.h>
 
@@ -146,6 +147,14 @@ public:
     Qt::KeyboardModifiers dragModifiers;
     QTimer ctrlHold;
     bool ctrlHeld = false;
+    int wheelPending = 0;
+    void setCtrlHeld(bool held)
+    {
+        if (ctrlHeld != held) {
+            ctrlHeld = held;
+            Q_EMIT q->ctrlHeldChanged();
+        }
+    }
     Location dragLocation = Location::None;
     Location lastDragLocation = Location::None;
     qreal devicePixelRatio = 1;
@@ -192,13 +201,14 @@ void SelectionEditorPrivate::ctrlPressed()
     if (ctrlHeld) {
         return;
     }
-    ctrlHeld = true;
+    setCtrlHeld(true);
     ctrlHold.start();
 }
 
 void SelectionEditorPrivate::ctrlReleased()
 {
-    ctrlHeld = false;
+    setCtrlHeld(false);
+    wheelPending = 0;
     ctrlHold.stop();
     setShowMagnifier(false);
 }
@@ -215,7 +225,7 @@ void SelectionEditorPrivate::followCtrl(Qt::KeyboardModifiers modifiers, bool dr
             ctrlReleased();
         }
     } else {
-        ctrlHeld = true;
+        setCtrlHeld(true);
         ctrlHold.stop();
         setShowMagnifier(true);
     }
@@ -548,6 +558,7 @@ SelectionEditor::SelectionEditor(QObject *parent)
     : QObject(parent)
     , d(new SelectionEditorPrivate(this))
 {
+
     setObjectName(u"selectionEditor"_s);
 
     connect(d->selection.get(), &Selection::rectChanged, this, [this](){
@@ -605,6 +616,11 @@ QPointF SelectionEditor::mousePosition() const
 bool SelectionEditor::showMagnifier() const
 {
     return d->showMagnifier;
+}
+
+bool SelectionEditor::ctrlHeld() const
+{
+    return d->ctrlHeld;
 }
 
 Location SelectionEditor::magnifierLocation() const
@@ -699,6 +715,21 @@ bool SelectionEditor::eventFilter(QObject *watched, QEvent *event)
         break;
     case QEvent::KeyRelease:
         keyReleaseEvent(item, static_cast<QKeyEvent *>(event));
+        break;
+    case QEvent::Wheel:
+        // Ectolens: Ctrl and the wheel zoom the magnifier (the overlay decides whether it shows);
+        // one step a notch, a touchpad's small moves adding up to one
+        if (d->ctrlHeld) {
+            d->wheelPending += static_cast<QWheelEvent *>(event)->angleDelta().y();
+            int steps = 0;
+            while (qAbs(d->wheelPending) >= 120) {
+                steps += d->wheelPending > 0 ? 1 : -1;
+                d->wheelPending -= d->wheelPending > 0 ? 120 : -120;
+            }
+            if (steps != 0) {
+                Q_EMIT ctrlWheel(steps);
+            }
+        }
         break;
     case QEvent::ShortcutOverride:
         // Ectolens: a shortcut with Ctrl (Ctrl+Z, Ctrl+C) may never reach keyPressEvent;

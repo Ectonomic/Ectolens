@@ -153,7 +153,8 @@ only when KDE Connect has a paired device.
 
 Hold Shift while you resize the frame and it keeps its proportions; a new
 frame drawn with Shift is a square. The magnifier, which Shift showed in
-Spectacle, is on Ctrl.
+Spectacle, is on Ctrl, and the scroll wheel zooms it in and out while you
+hold Ctrl.
 
 ## Improved UI and user experience
 

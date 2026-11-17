@@ -50,6 +50,8 @@ class SelectionEditor : public QObject
     Q_PROPERTY(QString frameAppName READ frameAppName NOTIFY frameIsWindowChanged FINAL)
     /// Whether or not to show the magnifier.
     Q_PROPERTY(bool showMagnifier READ showMagnifier NOTIFY showMagnifierChanged FINAL)
+    /// Ectolens: whether Ctrl is held, from the keys themselves (a pointer event's modifiers can lag them)
+    Q_PROPERTY(bool ctrlHeld READ ctrlHeld NOTIFY ctrlHeldChanged FINAL)
     /// The location that the magnifier is looking at,
     /// not necessarily the location of the magnifier.
     Q_PROPERTY(Location magnifierLocation READ magnifierLocation NOTIFY magnifierLocationChanged FINAL)
@@ -103,6 +105,7 @@ public:
     QString frameAppName() const;
 
     bool showMagnifier() const;
+    bool ctrlHeld() const;
 
     Location magnifierLocation() const;
 
@@ -130,6 +133,9 @@ Q_SIGNALS:
     void hoverRectChanged();
     void frameIsWindowChanged();
     void showMagnifierChanged();
+    void ctrlHeldChanged();
+    /// Ectolens: the wheel turned while Ctrl is held, in notches (up is positive)
+    void ctrlWheel(int steps);
     void magnifierLocationChanged();
 
     void accepted(const QRectF &rect, const ExportManager::Actions &actions);

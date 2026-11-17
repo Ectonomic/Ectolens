@@ -5,7 +5,9 @@
  * (granted by the desktop file run.sh installs in the sandbox). Commands on stdin,
  * one per line: "move X Y", "down", "up", "click", "key CODE" (Linux key code, pressed
  * and let go), "press CODE" and "release CODE" (a key held through what follows, as Shift
- * or Ctrl is held through a drag), "sleep MS". Prints "ok" after each.
+ * or Ctrl is held through a drag), "wheel N" (the vertical wheel by N, in Wayland's axis units:
+ * positive is down, toward you; the app sees -N × 12 as Qt's angleDelta, so -10 is one
+ * notch up), "sleep MS". Prints "ok" after each.
  */
 #include <linux/input-event-codes.h>
 #include <stdio.h>
@@ -76,6 +78,8 @@ int main(void)
             org_kde_kwin_fake_input_keyboard_key(fake, n, 1);
         } else if (sscanf(line, "release %d", &n) == 1) {
             org_kde_kwin_fake_input_keyboard_key(fake, n, 0);
+        } else if (sscanf(line, "wheel %lf", &x) == 1) {
+            org_kde_kwin_fake_input_axis(fake, WL_POINTER_AXIS_VERTICAL_SCROLL, wl_fixed_from_double(x));
         } else if (sscanf(line, "sleep %d", &n) == 1) {
             nap(n);
         }

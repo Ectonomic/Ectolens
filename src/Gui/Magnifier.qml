@@ -17,7 +17,8 @@ import org.kde.kquickimageeditor.ectolens
  * Ectolens: drawn as the look's other floating surfaces (a rounded panel with a border and a
  * soft shadow) instead of a bare square with a crosshair in the system's focus color. The
  * pixel it aims at is outlined dark and light, so it shows on any color, with thin guides
- * leading to it, and the pixel's place on its screen is read out under it.
+ * leading to it, and the pixel's place on its screen is read out under it. Ctrl and the wheel
+ * zoom it in and out (`factor`); the panel keeps its size and shows fewer or more pixels.
  */
 Item {
     id: root
@@ -25,27 +26,39 @@ Item {
     required property point targetPoint
     /// the screen the target is on, in the overlay's coordinates: the readout counts from its corner
     property rect screenRect: Qt.rect(0, 0, 0, 0)
+    /// how many times their size the pixels show
     property int factor: 3
     readonly property var t: EctoTheme.of(contextWindow)
-    // an odd number of pixels across, so one pixel sits in the middle
-    readonly property int span: 67
+    /// the panel's size, whatever the zoom
+    readonly property int size: 201
+    // the pixels across that fill it: an odd number, so one pixel sits in the middle
+    readonly property int span: {
+        const n = Math.ceil(size / factor)
+        return n % 2 === 1 ? n : n + 1
+    }
     readonly property real dpr: contextWindow.devicePixelRatio
     /// the aimed pixel, in the screen's own pixels
     readonly property point pixel: Qt.point(Math.floor((targetPoint.x - screenRect.x) * dpr),
                                             Math.floor((targetPoint.y - screenRect.y) * dpr))
 
-    implicitWidth: span * factor
-    implicitHeight: span * factor
+    objectName: "magnifierView"
+    implicitWidth: size
+    implicitHeight: size
 
     // the magnified pixels and the aim, drawn square, then given the panel's round corners below
     Item {
         id: zoomed
-        width: root.implicitWidth
-        height: root.implicitHeight
+        width: root.size
+        height: root.size
         visible: false
 
         ShaderEffectSource {
-            anchors.fill: parent
+            id: pixels
+            // the magnified pixels, centered; what runs past the panel is cut off by it
+            x: Math.round((root.size - width) / 2)
+            y: x
+            width: root.span * root.factor
+            height: width
             sourceItem: root.viewport
             // the position needs an offset of half the size minus half a logical pixel
             sourceRect: Qt.rect((root.targetPoint.x - root.viewport.viewportRect.x) - (root.span - 1) / 2,
@@ -55,10 +68,10 @@ Item {
         }
 
         // the aimed pixel's middle
-        readonly property real cx: (root.span - 1) / 2 * root.factor + root.factor / 2
+        readonly property real cx: pixels.x + (root.span - 1) / 2 * root.factor + root.factor / 2
         readonly property real cy: cx
         // guides: thin lines toward the aimed pixel, stopping short of it
-        readonly property real gap: root.factor * 2
+        readonly property real gap: root.factor + 3
         Repeater {
             model: [
                 {x: zoomed.cx, y: 0, w: 1, h: zoomed.cy - zoomed.gap},
@@ -138,7 +151,7 @@ Item {
         Text {
             id: readout
             anchors.centerIn: parent
-            text: root.pixel.x + ", " + root.pixel.y
+            text: root.pixel.x + ", " + root.pixel.y + "  ·  " + root.factor + "×"
             color: root.t.fg
             font.family: EctoTheme.mono
             font.pixelSize: 11
