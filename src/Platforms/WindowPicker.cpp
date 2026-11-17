@@ -192,6 +192,27 @@ std::optional<WindowPicker::Window> WindowPicker::window(const QString &uuid) co
     return Window{uuid, window->geometry, window->iconName, window->appId, window->title, bool(window->state & ORG_KDE_PLASMA_WINDOW_MANAGEMENT_STATE_MAXIMIZED)};
 }
 
+std::optional<WindowPicker::Window> WindowPicker::ownWindow() const
+{
+    constexpr uint32_t hidden = ORG_KDE_PLASMA_WINDOW_MANAGEMENT_STATE_MINIMIZED | ORG_KDE_PLASMA_WINDOW_MANAGEMENT_STATE_SKIPTASKBAR;
+    const uint32_t self = uint32_t(getpid());
+    std::optional<Window> found;
+    for (auto it = m_windows.cbegin(); it != m_windows.cend(); ++it) {
+        const auto &w = it.value();
+        if (!w || w->unmapped || w->pid != self || (w->state & hidden)) {
+            continue;
+        }
+        const Window window{it.key(), w->geometry, w->iconName, w->appId, w->title, bool(w->state & ORG_KDE_PLASMA_WINDOW_MANAGEMENT_STATE_MAXIMIZED)};
+        if (w->state & ORG_KDE_PLASMA_WINDOW_MANAGEMENT_STATE_ACTIVE) {
+            return window;
+        }
+        if (!found) {
+            found = window;
+        }
+    }
+    return found;
+}
+
 QString WindowPicker::appName(const Window &window)
 {
     if (!window.appId.isEmpty()) {

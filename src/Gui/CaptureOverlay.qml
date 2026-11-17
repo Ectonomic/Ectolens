@@ -86,7 +86,6 @@ MouseArea {
     // Ectolens: the magnifier's zoom, set by Ctrl and the wheel while it shows (SelectionEditor
     // hears the wheel with the frame's other input; kept while the overlay is open); the frame
     // doesn't change
-    readonly property var magnifierZooms: [2, 3, 4, 6, 8, 12, 16]
     property int magnifierZoom: 3
     Connections {
         target: SelectionEditor
@@ -94,9 +93,7 @@ MouseArea {
             if (!magnifierLoader.visible) {
                 return
             }
-            const zooms = root.magnifierZooms
-            const i = zooms.indexOf(root.magnifierZoom)
-            root.magnifierZoom = zooms[Math.max(0, Math.min(zooms.length - 1, i + steps))]
+            root.magnifierZoom = EctoTheme.magnifierZoomed(root.magnifierZoom, steps)
         }
     }
 

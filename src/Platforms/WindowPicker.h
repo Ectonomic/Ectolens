@@ -46,6 +46,9 @@ public:
     QList<Window> visibleWindows() const;
     /// A window by its id, wherever it is.
     std::optional<Window> window(const QString &uuid) const;
+    /// Ectolens: this process's own normal window, the active one first (Ectolens finds where
+    /// its window is this way: on Wayland a window doesn't know its place)
+    std::optional<Window> ownWindow() const;
     /// The app's name from its desktop file ("Konsole"), or the window title's last part.
     static QString appName(const Window &window);
 

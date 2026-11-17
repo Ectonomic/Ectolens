@@ -26,6 +26,8 @@ EmptyPage {
     // Ectolens: Pick Color and Measure on the picture, as in the overlay ("color", "measure", or "").
     // Points are in the picture's own units from its top left (the picture item's coordinates).
     property string inspect: ""
+    /// Pick Color's magnifier zoom: Ctrl and the wheel change it while Pick Color is on (the picture's zoom otherwise)
+    property int magnifierZoom: 3
     property point inspectPoint: Qt.point(-1, -1)
     property point inspectViewPoint: Qt.point(-1, -1) // the pointer, in this view's coordinates
     property point measureStart: Qt.point(-1, -1)
@@ -132,7 +134,15 @@ EmptyPage {
             horizontalStepSize: dprRound(Application.styleHints.wheelScrollLines * 20)
             verticalStepSize: dprRound(Application.styleHints.wheelScrollLines * 20)
             onWheel: wheel => {
-                    if (wheel.modifiers & Qt.ControlModifier && scrollFlickableTarget) {
+                    if (wheel.modifiers & Qt.ControlModifier && root.inspect === "color") {
+                    // Ectolens: with Pick Color on, Ctrl and the wheel zoom its magnifier, as in the overlay
+                    angleDelta.y += wheel.angleDelta.y
+                    while (Math.abs(angleDelta.y) >= 120) {
+                        root.magnifierZoom = EctoTheme.magnifierZoomed(root.magnifierZoom, angleDelta.y > 0 ? 1 : -1)
+                        angleDelta.y -= angleDelta.y > 0 ? 120 : -120
+                    }
+                    wheel.accepted = true
+                } else if (wheel.modifiers & Qt.ControlModifier && scrollFlickableTarget) {
                     // apparently it's impossible to add points to each other directly in QML
                     angleDelta.x += wheel.angleDelta.x
                     angleDelta.y += wheel.angleDelta.y
@@ -348,6 +358,7 @@ EmptyPage {
             targetPoint: root.inspectPoint
             screenRect: Qt.rect(0, 0, annotationEditor.width, annotationEditor.height)
             pixelRatio: root.imageDpr
+            factor: root.magnifierZoom
         }
     }
     EctoPickedColor {

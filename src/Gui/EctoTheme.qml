@@ -82,6 +82,12 @@ QtObject {
     function of(win) {
         return win && win.isViewer ? window : overlay
     }
+    /// the magnifier's zoom steps, Ctrl and the wheel moving through them (3 to start)
+    readonly property var magnifierZooms: [2, 3, 4, 6, 8, 12, 16]
+    function magnifierZoomed(zoom, steps) {
+        const i = magnifierZooms.indexOf(zoom)
+        return magnifierZooms[Math.max(0, Math.min(magnifierZooms.length - 1, (i < 0 ? 1 : i) + steps))]
+    }
     /// a color as Pick Color copies it: #RRGGBB, in capitals
     function hex(c) {
         const h = v => ("0" + Math.round(v * 255).toString(16)).slice(-2)

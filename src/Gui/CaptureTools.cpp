@@ -14,6 +14,7 @@
 #include "Platforms/RecordingQuality.h"
 #include "Platforms/VideoPlatform.h"
 #include "Platforms/WindowPicker.h"
+#include "Gui/ViewerWindow.h"
 #include "PrivateInfo.h"
 #include "ShortcutActions.h"
 #include "SpectacleCore.h"
@@ -660,6 +661,33 @@ void CaptureTools::pin(const QRectF &logicalFrame)
     SpectacleCore::instance()->closeOverlayQuietly();
 }
 
+// Where a pin of this size goes so it covers as little of the window as it can: beside it
+// (right, left, below, above), kept on the window's screen.
+static QRectF besideWindow(const QSizeF &size, const QRectF &window, const QRectF &screen)
+{
+    constexpr qreal gap = 24; // past the pin's own shadow
+    const QPointF candidates[] = {
+        {window.right() + gap, window.top()},
+        {window.left() - gap - size.width(), window.top()},
+        {window.left(), window.bottom() + gap},
+        {window.left(), window.top() - gap - size.height()},
+    };
+    QRectF best;
+    qreal bestOverlap = -1;
+    for (const QPointF &c : candidates) {
+        QRectF r(c, size);
+        r.moveLeft(std::clamp(r.left(), screen.left(), std::max(screen.left(), screen.right() - size.width())));
+        r.moveTop(std::clamp(r.top(), screen.top(), std::max(screen.top(), screen.bottom() - size.height())));
+        const QRectF overlap = r.intersected(window);
+        const qreal area = overlap.isEmpty() ? 0 : overlap.width() * overlap.height();
+        if (bestOverlap < 0 || area < bestOverlap) {
+            best = r;
+            bestOverlap = area;
+        }
+    }
+    return best;
+}
+
 void CaptureTools::pinPicture()
 {
     auto doc = SpectacleCore::instance()->annotationDocument();
@@ -669,7 +697,34 @@ void CaptureTools::pinPicture()
     }
     QImage image = doc->renderToImage();
     image.setDevicePixelRatio(f.dpr);
-    PinWindow::pin(image, f.canvas);
+    const QSizeF size = QSizeF(image.size()) / f.dpr;
+    // Ectolens window: beside the window, not where the capture was taken (the window is often there)
+    QRectF where(f.canvas.topLeft(), size);
+    std::optional<QRectF> window;
+    if (auto viewer = ViewerWindow::instance()) {
+        if (KWindowSystem::isPlatformWayland()) {
+            if (const auto w = WindowPicker::instance()->ownWindow()) {
+                window = QRectF(w->geometry);
+            }
+        } else {
+            window = QRectF(viewer->frameGeometry());
+        }
+    }
+    if (window) {
+        QRectF screen;
+        for (auto s : QGuiApplication::screens()) {
+            if (s->geometry().contains(window->center().toPoint())) {
+                screen = s->geometry();
+            }
+        }
+        if (screen.isEmpty()) {
+            screen = QGuiApplication::primaryScreen()->geometry();
+        }
+        where = besideWindow(size, *window, screen);
+        TestScript::report(u"ECTOLENS-PINWHERE %1 %2 %3 %4 window %5 %6 %7 %8"_s.arg(qRound(where.x())).arg(qRound(where.y())).arg(qRound(where.width()))
+                               .arg(qRound(where.height())).arg(qRound(window->x())).arg(qRound(window->y())).arg(qRound(window->width())).arg(qRound(window->height())));
+    }
+    PinWindow::pin(image, where);
     TestScript::report(u"ECTOLENS-PINNED %1 %2"_s.arg(image.width()).arg(image.height()));
 }
 

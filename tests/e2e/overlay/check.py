@@ -566,6 +566,15 @@ if scenario == 'window':
     ms, me = (pt(wprops.get(k, [''])[-1]) for k in ('measureStart', 'measureEnd'))
     zoom = float(wprops.get('currentZoom', ['0'])[-1] or 0)
     across = abs(me[0] - ms[0]) * zoom if len(ms) == 2 and len(me) == 2 else -1
+    # the pin's place against the window KWin reports: beside it, on the screen (1600x900)
+    pin_ok, pin_why = False, 'no ECTOLENS-PINWHERE'
+    pw = lines('ECTOLENS-PINWHERE')
+    if pw and len(pw[-1]) >= 9:
+        x, y, w, h = (int(v) for v in pw[-1][:4]); wx, wy, ww, wh = (int(v) for v in pw[-1][5:9])
+        ox = max(0, min(x + w, wx + ww) - max(x, wx)); oy = max(0, min(y + h, wy + wh) - max(y, wy))
+        on_screen = x >= 0 and y >= 0 and x + w <= 1600 and y + h <= 900
+        pin_ok = on_screen and ox * oy <= 0.25 * w * h
+        pin_why = f'pin {x},{y} {w}x{h}, window {wx},{wy} {ww}x{wh}: {ox * oy} of {w * h} square px over the window'
     results += [
         (bool(hiding) and bool(lines('ECTOLENS-HIDDEN')), "Hide Private Info in the window reads the whole picture and says what it found",
          f"{hiding[-1:]} {lines('ECTOLENS-HIDDEN')[-1:]}"),
@@ -575,6 +584,10 @@ if scenario == 'window':
          f'start {ms}, end {me}, zoom {zoom}: {across:.1f} px on screen'),
         (len(wprops.get('inspect', [])) == 2 and wprops['inspect'][1] == '', 'Esc leaves Measure (the report after Esc)', str(wprops.get('inspect'))),
         (bool(lines('ECTOLENS-PINNED')), "Pin in the window pins the picture, and the window stays", str(lines('ECTOLENS-PINNED'))),
+        (wprops.get('magnifierZoom', [''])[-1] == '6' and len(wprops.get('currentZoom', [])) >= 2 and wprops['currentZoom'][0] == wprops['currentZoom'][1],
+         "with Pick Color on, Ctrl and two notches of the wheel zoom the magnifier 3x to 6x, and the picture's zoom stays",
+         f"magnifier {wprops.get('magnifierZoom')}, picture {wprops.get('currentZoom', [])[:2]}"),
+        (pin_ok, "the window's pin goes beside the window, covering as little of it as the screen allows", pin_why),
     ]
     # the gear's Help entries, clicked with the real pointer: Help and Report a Bug open Ectolens's own
     # pages in the web browser (a stand-in that writes down what it was handed), About is Ectolens's
