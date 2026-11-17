@@ -27,6 +27,10 @@ CUTS = {
                     'keys': [('printscreen', 'Print Screen')]},
     'readme-frame-undo': {'scene': 'undo', 'kind': 'moving', 'area': (0, 0, 1280, 720), 'from': 0, 'to': None, 'width': 1600},
     'readme-corners': {'scene': 'corners', 'kind': 'moving', 'area': (10, 20, 800, 594), 'from': 0, 'to': None, 'width': 1600},
+    'readme-frame-ratio': {'scene': 'ratio', 'kind': 'moving', 'area': (10, 44, 760, 570), 'from': 0, 'to': None, 'width': 1520,
+                           'keys': [('shift1', 'Shift', 'shift1up'), ('shift2', 'Shift', 'shift2up')]},
+    'readme-magnifier-zoom': {'scene': 'zoom', 'kind': 'moving', 'area': (10, 44, 760, 570), 'from': 0, 'to': None, 'width': 1520,
+                              'keys': [('ctrl', 'Ctrl', 'wheel1'), ('wheel1', 'Ctrl + scroll wheel', 'ctrlup')]},
     'readme-text-align': {'scene': 'align', 'kind': 'moving', 'area': (10, 20, 800, 594), 'from': 0, 'to': None, 'width': 1600},
     'readme-after-capture': {'scene': 'menus', 'kind': 'still', 'area': (10, 44, 760, 570), 'at': ('aftermenu', 0), 'width': 1520},
     'readme-record-menu': {'scene': 'menus', 'kind': 'still', 'area': (10, 44, 760, 570), 'at': ('recordmenu', 0), 'width': 1520},
@@ -142,11 +146,20 @@ def moving(name, c, films, out):
     for i, row in enumerate(rows):
         t = row[1]
         im = cut_area(picture(folder, row), c['area'], c['width'])
-        for mark, words in c.get('keys', []):
+        # a held key whose end is the next key's start gives way at once, with no fade
+        starts = {k[0] for k in c.get('keys', [])}
+        for key in c.get('keys', []):
+            mark, words = key[0], key[1]
             if mark in m:
                 age = t - m[mark]
-                # in over 0.12 s, held, out over 0.25 s
-                strength = 0 if age < 0 or age > 1.6 else min(1, age / 0.12) if age < 0.12 else 1 if age < 1.35 else (1.6 - age) / 0.25
+                if len(key) > 2 and key[2] in m:
+                    # a key held from one mark to another: in over 0.12 s, held, out over 0.25 s after
+                    after = t - m[key[2]]
+                    fade = 0.0 if key[2] in starts else 0.25
+                    strength = 0 if age < 0 or after >= fade and after >= 0 else min(1, age / 0.12) if age < 0.12 else 1 if after < 0 else 1 - after / fade
+                else:
+                    # a key pressed: in over 0.12 s, held, out over 0.25 s
+                    strength = 0 if age < 0 or age > 1.6 else min(1, age / 0.12) if age < 0.12 else 1 if age < 1.35 else (1.6 - age) / 0.25
                 im = keycap(im, words, strength)
         nxt = rows[i + 1][1] if i + 1 < len(rows) else t + 1.2
         ms = max(20, round((nxt - t) * 1000))

@@ -70,6 +70,7 @@ Ectolens started from it, the biggest first. Each row links to its section.
 | [Text alignment](#labels-badges-and-text-boxes) | Always left | Left, center or right; in a box, also top, middle or bottom |
 | [Rounded boxes](#rounded-corners-for-boxes) | ❌ No: square corners only | ✅ Yes: Corners in the Rectangle tool's options rounds a box's corners, and they stay round when you resize the box |
 | [Keeping a frame's proportions](#keep-a-frames-proportions) | ❌ No | ✅ Yes: hold Shift while resizing |
+| [Magnifier zoom](#zoom-the-magnifier) | Fixed at 3× | 2× to 16×: hold Ctrl and scroll |
 | [Sharing](#what-a-capture-does-next) | Every share service KDE has, including public Imgur uploads | Only the services that work on your computer |
 
 The pictures below with a divider sweeping across them show the same moment
@@ -151,10 +152,21 @@ only when KDE Connect has a paired device.
 
 ### Keep a frame's proportions
 
-Hold Shift while you resize the frame and it keeps its proportions; a new
-frame drawn with Shift is a square. The magnifier, which Shift showed in
-Spectacle, is on Ctrl, and the scroll wheel zooms it in and out while you
-hold Ctrl.
+Hold Shift while you resize the frame and it keeps its proportions: drag a
+corner and both sides follow, drag an edge and the other two grow or shrink
+evenly. A new frame drawn with Shift is a square.
+
+<img src="docs/pictures/readme-frame-ratio.webp" width="100%" alt="The terminal framed, with a Shift key shown held. The frame's corner is dragged in toward the middle and back out, and the frame keeps its shape as it shrinks and grows, its size shown beside the pointer. Then its right edge is dragged in and out, and the top and bottom move in and out evenly with it">
+
+### Zoom the magnifier
+
+The magnifier shows the pixels under the pointer, so you can land the
+frame's edge on an exact pixel. Spectacle shows it while you hold Shift; in
+Ectolens it's on Ctrl, and the scroll wheel zooms it from 2× to 16× while
+you hold Ctrl. It outlines the pixel it aims at and shows that pixel's
+position and the zoom under it.
+
+<img src="docs/pictures/readme-magnifier-zoom.webp" width="100%" alt="The terminal framed. Ctrl is held over a line of the terminal, and the magnifier appears beside the pointer at 3 times the size, with thin guides to an outlined pixel and its position and zoom under it. With Ctrl and the scroll wheel it zooms in to 8 times, the letters' pixels large, follows the pointer along the line, then zooms back out">
 
 ## Improved UI and user experience
 

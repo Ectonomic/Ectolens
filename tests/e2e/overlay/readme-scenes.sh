@@ -7,7 +7,7 @@
 # pixels, tools/readme-pictures.sh sets it), so the pictures stay sharp on a dense display.
 
 # the scenes, in the order the README shows them
-SCENES="hero undo marks corners align private size tools menus window light ectolook kdelook settings spectacle agent"
+SCENES="hero undo ratio zoom marks corners align private size tools menus window light ectolook kdelook settings spectacle agent"
 
 README_SCENE=${SCENARIO#readme-}
 R_PX=1180; R_PY=660   # where the pointer is
@@ -76,7 +76,7 @@ readme_setup() {
     private|agent)
       printf '%s\n' '$ git config user.email' 'dana.reyes@example.com' '$ echo $OPENAI_API_KEY' \
         'sk-proj-9fK2xQ7mL4vR8tY1wZ3bN6cD5hJ0' '$ pwd' '/home/dana/projects/launch-notes' '$ ls' 'notes.md  slides.key  budget.ods' '$ ' > "$W/term.txt";;
-    marks|corners|align|undo|window|light|ectolook|kdelook|spectacle*)
+    marks|corners|ratio|zoom|align|undo|window|light|ectolook|kdelook|spectacle*)
       printf '%s\n' '$ git clone --recurse-submodules \' '      https://github.com/Ectonomic/Ectolens.git' '$ cd Ectolens' \
         '$ cmake -S 3rdparty/kpipewire -B build/kpipewire -G Ninja' '$ cmake --build build/kpipewire && cmake --install build/kpipewire' \
         '$ cmake -S . -B build/spectacle -G Ninja' '$ cmake --build build/spectacle' '$ ' > "$W/term.txt";;
@@ -167,6 +167,10 @@ readme_script() {
     marks) SCRIPT="frame:$FRAME;wait:700;locate:numberTool;locate:textTool;locate:selectTool;mark:framed";;
     # the frame moved and resized by real drags, then Undo pressed twice: it goes back, step by step
     undo) SCRIPT="frame:$FRAME;wait:700;mark:framed;wait:400;framerect;mark:moved;wait:500;locate:undoButton;mark:undo1;wait:500;locate:undoButton;mark:undo2";;
+    # Shift held on the frame's corner, then its edge: the frame keeps its proportions
+    ratio) SCRIPT="frame:$FRAME;wait:700;mark:framed";;
+    # Ctrl held over the terminal's words: the magnifier, zoomed in and out with the wheel
+    zoom) SCRIPT="frame:$FRAME;wait:700;mark:framed";;
     # a box drawn with square corners, then the Corners menu's 24 px, and a round box drawn beside it
     corners) SCRIPT="frame:$FRAME;wait:700;locate:rectangleTool;locate:selectTool;mark:framed;wait:400;locate:optionCorners;mark:drawn;wait:700;locate:cornerRadius24;mark:cornersmenu;wait:300;locate:selectTool;mark:rounded";;
     # a text box, then the Text tool's Align menu: Center, then Middle
@@ -251,6 +255,30 @@ readme_step() {
       glide $((RX + RW)) $((RY + RH)) 600; hold 250; drag_to $((RX + RW + 90)) $((RY + RH + 50)) 700; hold 800; film_mark changed;;
     undo:undo1) glide_to undoButton 700; hold 200; press; hold 1000;;
     undo:undo2) glide_to undoButton 500; hold 200; press; hold 1800; film_end;;
+
+    ratio:framed)
+      feed "move 560 640"; R_PX=560; R_PY=640; film start ratio 25; hold 500
+      # the corner, Shift held (key 42): in toward the middle and back out, the shape kept
+      glide 730 550 650; hold 300
+      feed "press 42"; film_mark shift1; hold 350
+      feed "down"; feed "sleep 90"; glide 500 450 1000; hold 500; glide 730 550 1000; feed "sleep 90"; feed "up"; hold 250
+      feed "release 42"; film_mark shift1up; hold 600
+      # the right edge, Shift held: the top and bottom follow, evenly
+      glide 730 350 600; hold 300
+      feed "press 42"; film_mark shift2; hold 350
+      feed "down"; feed "sleep 90"; glide 560 350 900; hold 500; glide 730 350 900; feed "sleep 90"; feed "up"; hold 250
+      feed "release 42"; film_mark shift2up; hold 1300; film_end;;
+
+    zoom:framed)
+      feed "move 560 640"; R_PX=560; R_PY=640; film start zoom 25; hold 500
+      # over the terminal's fourth line, "cmake -S 3rdparty/kpipewire ..."
+      glide 96 288 800; hold 400
+      # Ctrl (key 29) held: the magnifier; then the wheel, three notches up and two down
+      feed "press 29"; film_mark ctrl; hold 1000
+      feed "wheel -10"; film_mark wheel1; hold 550; feed "wheel -10"; hold 550; feed "wheel -10"; hold 800
+      glide 330 288 1800; hold 500
+      feed "wheel 10"; hold 550; feed "wheel 10"; hold 800
+      feed "release 29"; film_mark ctrlup; hold 1100; film_end;;
 
     corners:framed)
       feed "move 560 610"; R_PX=560; R_PY=610; film start corners 25; hold 400
