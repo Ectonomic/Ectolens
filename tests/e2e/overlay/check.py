@@ -191,7 +191,9 @@ if scenario == 'textbox':
     label_padded, shifted, ctrled, centered, mid = info(5), info(6), info(7), info(8), info(9)
     tools = [l for l in lines('ECTOLENS-TOOL')]
     def tool_align(i):
-        return int(tools[i][-1].split('=')[1]) if i < len(tools) and tools[i][-1].startswith('align=') else None
+        # the report's align= field, found by its name
+        field = next((f for f in tools[i] if f.startswith('align=')), None) if i < len(tools) else None
+        return int(field.split('=')[1]) if field else None
     words = 'click record to start then pick the window you want to keep'
     handles = [l for l in lines('ECTOLENS-AT') if l and l[0] == 'textBoxHandle4']
     results = []
@@ -260,7 +262,7 @@ if scenario == 'textbox':
     menu_items = [l[0] for l in lines('ECTOLENS-AT') if l and l[0].startswith('align-')]
     results.append(('align-4' in menu_items and 'align-128' in menu_items, "the rail's Align menu opens with a real click, holding Center and Middle", str(menu_items)))
     results.append((tool_align(0) == (4 | 32) and tool_align(1) == (4 | 128),
-                    'Center, then Middle, picked with real clicks become the Text tool\'s alignment', str([t[-1] for t in tools])))
+                    'Center, then Middle, picked with real clicks become the Text tool\'s alignment', str([next((f for f in t if f.startswith('align=')), None) for t in tools])))
     results.append((bool(centered) and not centered['box'] and centered['align'] == (4 | 128) and centered['chars'] == len('centered words')
                     and abs(centered['x'] + centered['w'] / 2 - (FX + 600)) <= 1,
                     'a centered label grows both ways from where it was clicked', str(centered)))
@@ -1026,6 +1028,52 @@ if scenario in ('agent', 'agentoff'):
           f'{stop} {json.dumps(probe)}')
     ok, name, why = recording_length('the still window')
     check(name, ok, why)
+    sys.exit(1 if fails else 0)
+
+if scenario == 'frameratio':
+    # Shift keeps the frame's proportions and Ctrl shows the magnifier, with the real pointer and keys.
+    # The frame after each step is the app's own report (framerect); the magnifier's showing is the
+    # overlay's own (prop magnifier,visible).
+    states, step = {}, None
+    for l in log.splitlines():
+        p = l.split()
+        if p[:1] == ['ECTOLENS-STEP']:
+            step = 'framed' if p[1] == 'overlay' else p[1]
+        elif p[:1] == ['ECTOLENS-FRAME'] and step:
+            states.setdefault(step, {})['rect'] = tuple(int(float(v)) for v in p[1:5])
+        elif p[:3] == ['ECTOLENS-PROP', 'magnifier', 'visible'] and step:
+            states.setdefault(step, {})['mag'] = p[3] if len(p) > 3 else ''
+    def rect(n):
+        return states.get(n, {}).get('rect')
+    def mag(n):
+        # the prop command reports only items that show: no line is a hidden magnifier
+        return states.get(n, {}).get('mag', 'false')
+    def near(a, b, by=2):
+        return abs(a - b) <= by
+    def ratio_kept(r, base):
+        # w/h as before, to a pixel: |w*h0 - h*w0| within one pixel of either side
+        return r is not None and base is not None and abs(r[2] * base[3] - r[3] * base[2]) <= base[2] + base[3]
+    R0, R1, R2, R3, R4, R5, R6 = (rect(n) for n in ('framed', 'corner', 'edge', 'plainedge', 'holdshift', 'letshift', 'square'))
+    check('every step was reported', all(r is not None for r in (R0, R1, R2, R3, R4, R5, R6)), sorted(states))
+    if all(r is not None for r in (R0, R1, R2, R3, R4, R5, R6)):
+        check('Shift on a corner: pulled 100 right and 10 down, the frame keeps its proportions, grown by the longer pull',
+              R1[:2] == R0[:2] and ratio_kept(R1, R0) and near(R1[2], R0[2] + 100), f'{R0} -> {R1}')
+        cy1, cy2 = R1[1] + R1[3] / 2, R2[1] + R2[3] / 2
+        check('Shift on an edge: pulled 100 right, the height follows, grown evenly up and down',
+              R2[0] == R1[0] and near(R2[2], R1[2] + 100) and ratio_kept(R2, R1) and near(cy2, cy1, 1), f'{R1} -> {R2}')
+        check('no Shift on an edge: pulled 100 left, the height stays',
+              R3[0] == R2[0] and near(R3[2], R2[2] - 100) and R3[1] == R2[1] and R3[3] == R2[3], f'{R2} -> {R3}')
+        check('Shift pressed in the middle of a drag keeps the proportions from then on',
+              R4[:2] == R3[:2] and ratio_kept(R4, R3) and near(R4[2], R3[2] + 120), f'{R3} -> {R4}')
+        check('Shift let go before the button: the frame follows the pointer freely again',
+              R5[:2] == R3[:2] and near(R5[2], R3[2] + 120) and near(R5[3], R3[3], 1), f'{R3} -> {R5}')
+        check('a new frame drawn with Shift is a square, from where the drag began',
+              R6[:2] == (100, 560) and near(R6[2], R6[3], 1) and near(R6[2], 200), str(R6))
+    check('Ctrl held on its own shows the magnifier', mag('ctrlhold') == 'true', str(mag('ctrlhold')))
+    check('letting Ctrl go hides it', mag('ctrlrelease') == 'false', str(mag('ctrlrelease')))
+    check('Ctrl+Z, Ctrl still held after it, is a shortcut: no magnifier', mag('ctrlshortcut') == 'false', str(mag('ctrlshortcut')))
+    check('a drag of an edge with Ctrl held shows the magnifier at once', mag('ctrldrag') == 'true', str(mag('ctrldrag')))
+    check('letting go of the drag and Ctrl hides it', mag('ctrldragend') == 'false', str(mag('ctrldragend')))
     sys.exit(1 if fails else 0)
 
 if scenario == 'frameundo':

@@ -185,7 +185,7 @@
      </item>
      <item>
       <property name="text">
-       <string>While holding Shift</string>
+       <string>While holding Ctrl</string>
       </property>
      </item>
     </widget>

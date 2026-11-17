@@ -371,9 +371,10 @@ MouseArea {
         readonly property rect bottomBounds: screenAt(frame.x + frame.width / 2, frame.y + frame.height - 1)
         readonly property rect mouseScreen: screenAt(SelectionEditor.mousePosition.x, SelectionEditor.mousePosition.y)
 
-        // Magnifier (Shift while framing, and Pick Color)
+        // Magnifier (Ctrl while framing, and Pick Color)
         Loader {
             id: magnifierLoader
+            objectName: "magnifier"
             readonly property bool picking: root.mode === "color" && root.toolPoint.x >= 0
             readonly property point targetPoint: {
                 if (picking) {
@@ -413,20 +414,27 @@ MouseArea {
             }
             readonly property rect rect: {
                 const margin = Kirigami.Units.gridUnit
-                let x = targetPoint.x + margin
-                let y = targetPoint.y + margin
-                if (!picking && SelectionEditor.magnifierLocation !== SelectionEditor.FollowMouse) {
-                    const loc = SelectionEditor.magnifierLocation
-                    if (loc === SelectionEditor.TopLeft || loc === SelectionEditor.Left || loc === SelectionEditor.BottomLeft) {
-                        x = targetPoint.x - width - margin
-                    } else if (loc === SelectionEditor.Top || loc === SelectionEditor.Bottom) {
-                        x = targetPoint.x - width / 2
-                    }
-                    if (loc === SelectionEditor.TopLeft || loc === SelectionEditor.Top || loc === SelectionEditor.TopRight) {
-                        y = targetPoint.y - width - margin
-                    } else if (loc === SelectionEditor.Left || loc === SelectionEditor.Right) {
-                        y = targetPoint.y - height / 2
-                    }
+                const t = targetPoint
+                const loc = picking ? SelectionEditor.FollowMouse : SelectionEditor.magnifierLocation
+                // the side it prefers: past the dragged edge or corner, or below right of the pointer
+                const centerX = loc === SelectionEditor.Top || loc === SelectionEditor.Bottom
+                const centerY = loc === SelectionEditor.Left || loc === SelectionEditor.Right
+                const toLeft = loc === SelectionEditor.TopLeft || loc === SelectionEditor.Left || loc === SelectionEditor.BottomLeft
+                const above = loc === SelectionEditor.TopLeft || loc === SelectionEditor.Top || loc === SelectionEditor.TopRight
+                // Ectolens: where that side runs off its screen, the other side, so it never covers
+                // the pixel it magnifies
+                const s = screensRectItem.screenAt(t.x, t.y)
+                let x = centerX ? t.x - width / 2 : toLeft ? t.x - width - margin : t.x + margin
+                if (!centerX && x + width > s.x + s.width) {
+                    x = t.x - width - margin
+                } else if (!centerX && x < s.x) {
+                    x = t.x + margin
+                }
+                let y = centerY ? t.y - height / 2 : above ? t.y - height - margin : t.y + margin
+                if (!centerY && y + height > s.y + s.height) {
+                    y = t.y - height - margin
+                } else if (!centerY && y < s.y) {
+                    y = t.y + margin
                 }
                 return Geometry.rectBounded(dprRound(x), dprRound(y), width, height, SelectionEditor.screensRect)
             }
@@ -441,6 +449,7 @@ MouseArea {
             sourceComponent: Magnifier {
                 viewport: annotationsLoader.item
                 targetPoint: magnifierLoader.targetPoint
+                screenRect: screensRectItem.screenAt(magnifierLoader.targetPoint.x, magnifierLoader.targetPoint.y)
             }
         }
 
@@ -538,7 +547,12 @@ MouseArea {
             active: SelectionEditor.dragLocation || visible
             height: implicitHeight
             width: implicitWidth
+            // Ectolens: while the magnifier shows, the size sits under it (above, at a screen's foot)
+            readonly property bool underMagnifier: magnifierLoader.visible
             x: {
+                if (underMagnifier) {
+                    return dprRound(magnifierLoader.x + (magnifierLoader.width - width) / 2)
+                }
                 let x = SelectionEditor.mousePosition.x + Kirigami.Units.gridUnit
                 if (x + width > root.viewportRect.right) {
                     x -= Kirigami.Units.gridUnit * 2 + width
@@ -546,6 +560,10 @@ MouseArea {
                 return dprRound(x)
             }
             y: {
+                if (underMagnifier) {
+                    const below = magnifierLoader.y + magnifierLoader.height + EctoTheme.rowGap
+                    return dprRound(below + height > root.viewportRect.bottom ? magnifierLoader.y - height - EctoTheme.rowGap : below)
+                }
                 let y = SelectionEditor.mousePosition.y - height / 2
                 if (y < root.viewportRect.top) {
                     y += height / 2

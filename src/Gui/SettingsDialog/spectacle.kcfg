@@ -106,13 +106,13 @@
         <default>false</default>
     </entry>
     <entry name="showMagnifier" type="Enum">
-        <label>Clipboard action which should be executed after the screenshot is taken</label>
+        <label>When the magnifier shows while framing (Shift keeps the frame's proportions)</label>
         <choices>
         <choice name="ShowMagnifierNever"></choice>
         <choice name="ShowMagnifierAlways"></choice>
-        <choice name="ShowMagnifierShiftHeld"></choice>
+        <choice name="ShowMagnifierCtrlHeld"></choice>
         </choices>
-        <default>ShowMagnifierShiftHeld</default>
+        <default>ShowMagnifierCtrlHeld</default>
     </entry>
     <entry name="useReleaseToCapture" type="Bool">
         <label>Whether the screenshot should be captured after selecting the region and releasing the mouse</label>

@@ -40,7 +40,7 @@ export WAYLAND_DISPLAY=ectolens QT_QPA_PLATFORM=wayland QT_QPA_PLATFORMTHEME=kde
 # The test's own screenshots come from the installed Spectacle, which KWin permits by its own
 # desktop file; Ectolens must earn its permission the same way.
 shot() { spectacle --background --nonotify --fullscreen --output "$1" >> "$OUT/shots.log" 2>&1; }
-case "${SCENARIO:-frame}" in tour|printkey|window|tools|share|video|toggle|annotate|toolclicks|textbox|textzoom|fullrecord|frameundo|agent|agentoff|readme-*) SCENE=1;; *) SCENE=;; esac
+case "${SCENARIO:-frame}" in tour|printkey|window|tools|share|video|toggle|annotate|toolclicks|textbox|textzoom|fullrecord|frameundo|frameratio|agent|agentoff|readme-*) SCENE=1;; *) SCENE=;; esac
 # readme-*: the README's pictures, filmed (readme-scenes.sh holds each scene)
 README=; case "${SCENARIO:-frame}" in readme-*) README=1; . "$HERE/readme-scenes.sh";; esac
 # a stand-in notification server, to read what Ectolens says after a capture
@@ -144,6 +144,9 @@ JS
 fi
 case "${SCENARIO:-frame}" in
   # undo and redo through the frame's moves and resizes and the marks, in order, with the real pointer and keys
+  # Shift keeps the frame's proportions (a corner, an edge, Shift pressed mid-drag, a new frame a square);
+  # Ctrl held shows the magnifier, a shortcut's Ctrl never does, a drag with Ctrl shows it at once
+  frameratio) SCRIPT="mark:overlay;frame:400,200,800,400;wait:600;framerect;mark:corner;wait:500;framerect;mark:edge;wait:500;framerect;mark:plainedge;wait:500;framerect;mark:holdshift;wait:300;framerect;mark:letshift;wait:500;framerect;mark:square;wait:500;framerect;mark:ctrlhold;prop:magnifier,visible;mark:ctrlrelease;wait:300;prop:magnifier,visible;mark:ctrlshortcut;prop:magnifier,visible;mark:ctrlshortcutend;wait:300;locate:frameLabel;framerect;mark:ctrldrag;prop:magnifier,visible;mark:ctrldragend;wait:300;prop:magnifier,visible;mark:end";;
   frameundo) SCRIPT="mark:overlay;frame:400,196,799,508;wait:600;framerect;framehistory;mark:move;wait:900;framerect;framehistory;mark:resize;wait:900;framerect;framehistory;tool:NumberTool;wait:300;mark:number;wait:600;tool:NoTool;wait:300;framerect;framehistory;mark:nudge;wait:900;framerect;framehistory;mark:undo1;framerect;framehistory;mark:undo2;framerect;framehistory;mark:undo3;framerect;framehistory;mark:undo4;framerect;framehistory;mark:undo5;framerect;framehistory;mark:redo1;framerect;framehistory;mark:redo2;framerect;framehistory;mark:redo3;framerect;framehistory;mark:redo4;framerect;framehistory;mark:undo6;framerect;framehistory;mark:undo7;framerect;framehistory;mark:newmove;wait:900;framerect;framehistory;mark:redo5;framerect;framehistory;locate:undoButton;mark:click-undoButton;framerect;framehistory";;
   # an AI agent's requests through ectolens-mcp, the person answering each in the overlay
   agent) SCRIPT="mark:agent1;wait:3000;rect:agentCard;prop:frameHandles,visible;locate:agentCardAdjust;locate:agentCardSend;mark:send1;mark:agent2;wait:3000;rect:agentCard;locate:numberTool;mark:dimclick2;toolinfo;prop:agentCard,nudges;rect:agentCard;framerect;mark:dimkey2;framerect;locate:agentCardRefuse;mark:refuse2;mark:agent3;wait:3000;mark:enter3;mark:agent4;wait:2500;prop:agentCardNote,text;locate:agentCardAdjust;mark:adjust4;rect:agentCard;locate:agentSend;mark:send4;mark:agent5;wait:3000;locate:agentCardAdjust;mark:adjust5;wait:400;prop:frameHandles,visible;framerect;mark:drag5;framerect;locate:agentSend;mark:send5;mark:agent6;wait:3000;prop:agentCardBlur,checked;prop:agentCardBlurNote,text;locate:agentCardBlur;mark:unblur6;wait:600;prop:agentCardBlur,checked;prop:agentCardBlurNote,text;locate:agentCardSend;mark:send6;mark:agent7;wait:3000;prop:agentCardBlur,checked;locate:agentCardBlur;mark:unblur7;wait:600;mark:reblur7;wait:600;prop:agentCardBlur,checked;prop:agentCardBlurNote,text;locate:agentCardSend;mark:send7;mark:end";;
@@ -407,6 +410,37 @@ JS
                        for c in "move $MX $MY" "sleep 150" "down" "sleep 80" "move $((MX - 20)) $((MY + 10))" "sleep 40" "move $((MX - 50)) $((MY + 20))" "sleep 150" "up" "sleep 300"; do feed "$c"; done;;
             esac
           fi
+          if [ "${SCENARIO:-frame}" = frameratio ]; then
+            read -r _ RX RY RW RH _ < <(grep "^ECTOLENS-FRAME " "$OUT/ectolens.log" | tail -1)
+            BX=$((RX + RW)); BY=$((RY + RH)); MY=$((RY + RH / 2))
+            case "$name" in
+              # Shift (key 42) held: the corner pulled 100 right and 10 down
+              corner)   for c in "move $BX $BY" "sleep 150" "press 42" "down" "sleep 80" "move $((BX + 40)) $((BY + 5))" "sleep 40" "move $((BX + 100)) $((BY + 10))" "sleep 150" "up" "release 42" "sleep 300"; do feed "$c"; done;;
+              # Shift held: the right edge's handle pulled 100 right
+              edge)     for c in "move $BX $MY" "sleep 150" "press 42" "down" "sleep 80" "move $((BX + 50)) $MY" "sleep 40" "move $((BX + 100)) $MY" "sleep 150" "up" "release 42" "sleep 300"; do feed "$c"; done;;
+              # no Shift: the right edge pulled 100 left, the height stays
+              plainedge) for c in "move $BX $MY" "sleep 150" "down" "sleep 80" "move $((BX - 50)) $MY" "sleep 40" "move $((BX - 100)) $MY" "sleep 150" "up" "sleep 300"; do feed "$c"; done;;
+              # the corner pulled 120 right, 0 down, and Shift pressed while still holding the button
+              holdshift) HBX=$BX; HBY=$BY
+                         for c in "move $BX $BY" "sleep 150" "down" "sleep 80" "move $((BX + 60)) $BY" "sleep 40" "move $((BX + 120)) $BY" "sleep 200" "press 42" "sleep 300"; do feed "$c"; done
+                         shot "$OUT/ratio-held.png";;
+              # Shift let go before the button: the frame follows the pointer freely again
+              letshift)  for c in "release 42" "sleep 200" "move $((HBX + 121)) $HBY" "sleep 40" "move $((HBX + 120)) $HBY" "sleep 150" "up" "sleep 300"; do feed "$c"; done;;
+              # a new frame from (100,560), Shift held, toward (300,610): a square
+              square)   for c in "move 100 560" "sleep 150" "press 42" "down" "sleep 80" "move 200 590" "sleep 40" "move 300 610" "sleep 150" "up" "release 42" "sleep 300"; do feed "$c"; done;;
+              # Ctrl (key 29) held on its own over the terminal's words
+              ctrlhold) for c in "move 452 300" "sleep 150" "press 29" "sleep 700"; do feed "$c"; done
+                        shot "$OUT/magnifier.png";;
+              ctrlrelease) feed "release 29"; feed "sleep 200";;
+              # Ctrl+Z, Ctrl still held after it: a shortcut, no magnifier
+              ctrlshortcut) for c in "press 29" "sleep 80" "key 44" "sleep 600"; do feed "$c"; done;;
+              ctrlshortcutend) feed "release 29"; feed "sleep 200";;
+              # Ctrl held through a drag of the frame's right edge: the magnifier at once
+              ctrldrag) for c in "move $BX $MY" "sleep 150" "press 29" "down" "sleep 60" "move $((BX + 30)) $MY" "sleep 60"; do feed "$c"; done
+                        shot "$OUT/magnifier-drag.png";;
+              ctrldragend) for c in "up" "release 29" "sleep 200"; do feed "$c"; done;;
+            esac
+          fi
           if [ "${SCENARIO:-frame}" = toolclicks ]; then
             case "$name" in
               # a real click on the picture with the tool in use: a text (then type) or a number
@@ -590,7 +624,7 @@ JS
   [ "${SCENARIO:-frame}" = printkey ] && [ -e "$W/printkey-done" ] && break
   [ "${SCENARIO:-frame}" = toggle ] && [ -e "$W/toggle-done" ] && break
   [ -n "$WINDOW_TEST" ] && grep -q "^ECTOLENS-STEP done" "$OUT/ectolens.log" && break
-  { [ "${SCENARIO:-frame}" = tools ] || [ "${SCENARIO:-frame}" = frameundo ] || [ "${SCENARIO:-frame}" = agent ] || [ "${SCENARIO:-frame}" = agentoff ] || [ "${SCENARIO:-frame}" = share ] || [ "${SCENARIO:-frame}" = annotate ] || [ "${SCENARIO:-frame}" = toolclicks ] || [ "${SCENARIO:-frame}" = textbox ]; } && grep -q "^ECTOLENS-STEP done" "$OUT/ectolens.log" && break
+  { [ "${SCENARIO:-frame}" = tools ] || [ "${SCENARIO:-frame}" = frameundo ] || [ "${SCENARIO:-frame}" = frameratio ] || [ "${SCENARIO:-frame}" = agent ] || [ "${SCENARIO:-frame}" = agentoff ] || [ "${SCENARIO:-frame}" = share ] || [ "${SCENARIO:-frame}" = annotate ] || [ "${SCENARIO:-frame}" = toolclicks ] || [ "${SCENARIO:-frame}" = textbox ]; } && grep -q "^ECTOLENS-STEP done" "$OUT/ectolens.log" && break
   sleep 0.1
 done
 sleep 1

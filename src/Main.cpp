@@ -109,6 +109,17 @@ int main(int argc, char **argv)
         }
     }
 
+    // Ectolens: Shift keeps the frame's proportions, so the magnifier moved to Ctrl. A saved
+    // "while holding Shift" carries over as "while holding Ctrl", once.
+    {
+        KConfigGroup general(KSharedConfig::openConfig(u"ectolensrc"_s), u"General"_s);
+        const QString old = general.readEntry("showMagnifier", QString());
+        if (old == u"ShowMagnifierShiftHeld"_s) {
+            general.writeEntry("showMagnifier", u"ShowMagnifierCtrlHeld"_s);
+            general.sync();
+        }
+    }
+
     KLocalizedString::setApplicationDomain(QByteArrayLiteral("spectacle"));
     QCoreApplication::setOrganizationDomain(u"ectonomic.com"_s); // D-Bus name com.ectonomic.ectolens
 

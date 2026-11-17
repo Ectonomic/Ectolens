@@ -27,6 +27,7 @@
 #include <QQuickItem>
 #include <QQuickWindow>
 #include <QScreen>
+#include <QTimer>
 #include <QtMath>
 #include <qnamespace.h>
 
@@ -46,6 +47,8 @@ static constexpr qreal s_handleRadiusMouse = 9;
 static constexpr qreal s_handleRadiusTouch = 12;
 static constexpr qreal s_minSpacingBetweenHandles = 20;
 static constexpr qreal s_magnifierLargeStep = 15;
+// how long Ctrl is held on its own before the magnifier shows (a shortcut's Ctrl is shorter)
+static constexpr int s_ctrlHoldMs = 250;
 
 // Map the global position of the scene to a logical global position (if necessary),
 // then translate the scene position of the event to a logical global position using
@@ -72,6 +75,13 @@ public:
     qreal dprRound(qreal value) const;
 
     void handleArrowKey(QKeyEvent *event);
+    // Ectolens: the frame follows a drag; Shift keeps its proportions (a new frame: a square)
+    void dragTo(Qt::KeyboardModifiers modifiers);
+    // Ectolens: the magnifier shows while Ctrl is held on its own, after a moment, so a
+    // shortcut such as Ctrl+Z never flashes it; a drag with Ctrl held shows it at once
+    void ctrlPressed();
+    void ctrlReleased();
+    void followCtrl(Qt::KeyboardModifiers modifiers, bool dragging);
 
     QPointF determineInitialMouseOffset() const;
 
@@ -131,6 +141,11 @@ public:
     QPointF startPos;
     QPointF initialTopLeft;
     QPointF initialMouseOffset;
+    QRectF initialRect; // the frame when the drag began
+    QPointF initialCorner; // the dragged corner or edge's point when the drag began
+    Qt::KeyboardModifiers dragModifiers;
+    QTimer ctrlHold;
+    bool ctrlHeld = false;
     Location dragLocation = Location::None;
     Location lastDragLocation = Location::None;
     qreal devicePixelRatio = 1;
@@ -163,6 +178,47 @@ SelectionEditorPrivate::SelectionEditorPrivate(SelectionEditor *q)
     : q(q)
     , selection(new Selection(q))
 {
+    ctrlHold.setSingleShot(true);
+    ctrlHold.setInterval(s_ctrlHoldMs);
+    QObject::connect(&ctrlHold, &QTimer::timeout, q, [this] {
+        if (ctrlHeld) {
+            setShowMagnifier(true);
+        }
+    });
+}
+
+void SelectionEditorPrivate::ctrlPressed()
+{
+    if (ctrlHeld) {
+        return;
+    }
+    ctrlHeld = true;
+    ctrlHold.start();
+}
+
+void SelectionEditorPrivate::ctrlReleased()
+{
+    ctrlHeld = false;
+    ctrlHold.stop();
+    setShowMagnifier(false);
+}
+
+void SelectionEditorPrivate::followCtrl(Qt::KeyboardModifiers modifiers, bool dragging)
+{
+    // a hover's modifiers can lag the keys, so only a drag's are trusted here
+    if (!dragging) {
+        return;
+    }
+    if (!(modifiers & Qt::ControlModifier)) {
+        // Ctrl let go where the overlay didn't hear it
+        if (ctrlHeld) {
+            ctrlReleased();
+        }
+    } else {
+        ctrlHeld = true;
+        ctrlHold.stop();
+        setShowMagnifier(true);
+    }
 }
 
 void SelectionEditorPrivate::updateHandlePositions()
@@ -302,6 +358,91 @@ void SelectionEditorPrivate::handleArrowKey(QKeyEvent *event)
     }
     setMagnifierLocation(brMag ? Location::BottomRight : magLocation);
     selection->setRect(modifySize ? selectionRect : G::rectBounded(selectionRect, screensRect));
+}
+
+void SelectionEditorPrivate::dragTo(Qt::KeyboardModifiers modifiers)
+{
+    const bool keepRatio = modifiers & Qt::ShiftModifier;
+    const qreal w0 = qAbs(initialCorner.x() - startPos.x());
+    const qreal h0 = qAbs(initialCorner.y() - startPos.y());
+    // which way from the fixed corner the dragged one started: a drag straight through keeps a side
+    const auto side = [](qreal d, qreal fallback) {
+        return d > 0 ? 1.0 : d < 0 ? -1.0 : (fallback >= 0 ? 1.0 : -1.0);
+    };
+    switch (dragLocation) {
+    case Location::TopLeft:
+    case Location::TopRight:
+    case Location::BottomRight:
+    case Location::BottomLeft: {
+        auto p = mousePos - initialMouseOffset;
+        if (keepRatio && w0 > 0 && h0 > 0) {
+            // the larger of the two stretches, both ways
+            const qreal dx = p.x() - startPos.x();
+            const qreal dy = p.y() - startPos.y();
+            const qreal scale = qMax(qAbs(dx) / w0, qAbs(dy) / h0);
+            p = QPointF(startPos.x() + dprRound(side(dx, initialCorner.x() - startPos.x()) * w0 * scale),
+                        startPos.y() + dprRound(side(dy, initialCorner.y() - startPos.y()) * h0 * scale));
+        }
+        const bool afterX = p.x() >= startPos.x();
+        const bool afterY = p.y() >= startPos.y();
+        selection->setRect(afterX ? startPos.x() : p.x(),
+                           afterY ? startPos.y() : p.y(),
+                           qAbs(p.x() - startPos.x()) + (afterX ? devicePixel : 0),
+                           qAbs(p.y() - startPos.y()) + (afterY ? devicePixel : 0));
+        break;
+    }
+    case Location::Outside: {
+        auto p = mousePos;
+        if (keepRatio) {
+            // a new frame drawn with Shift is a square
+            const qreal dx = p.x() - startPos.x();
+            const qreal dy = p.y() - startPos.y();
+            const qreal length = qMax(qAbs(dx), qAbs(dy));
+            p = QPointF(startPos.x() + side(dx, 1) * length, startPos.y() + side(dy, 1) * length);
+        }
+        selection->setRect(qMin(p.x(), startPos.x()),
+                           qMin(p.y(), startPos.y()),
+                           qAbs(p.x() - startPos.x()) + devicePixel,
+                           qAbs(p.y() - startPos.y()) + devicePixel);
+        break;
+    }
+    case Location::Top:
+    case Location::Bottom: {
+        const auto p = mousePos - initialMouseOffset;
+        const bool afterY = p.y() >= startPos.y();
+        const qreal height = qAbs(p.y() - startPos.y()) + (afterY ? devicePixel : 0);
+        qreal x = initialRect.x();
+        qreal width = initialRect.width();
+        if (keepRatio && initialRect.width() > 0 && initialRect.height() > 0) {
+            // the width follows, growing both ways from the frame's middle
+            width = dprRound(height * initialRect.width() / initialRect.height());
+            x = dprRound(initialRect.center().x() - width / 2);
+        }
+        selection->setRect(x, afterY ? startPos.y() : p.y(), width, height);
+        break;
+    }
+    case Location::Right:
+    case Location::Left: {
+        const auto p = mousePos - initialMouseOffset;
+        const bool afterX = p.x() >= startPos.x();
+        const qreal width = qAbs(p.x() - startPos.x()) + (afterX ? devicePixel : 0);
+        qreal y = initialRect.y();
+        qreal height = initialRect.height();
+        if (keepRatio && initialRect.width() > 0 && initialRect.height() > 0) {
+            height = dprRound(width * initialRect.height() / initialRect.width());
+            y = dprRound(initialRect.center().y() - height / 2);
+        }
+        selection->setRect(afterX ? startPos.x() : p.x(), y, width, height);
+        break;
+    }
+    case Location::Inside: {
+        QRectF newRect(mousePos - startPos + initialTopLeft, selection->sizeF());
+        selection->setRect(G::rectBounded(newRect, screensRect));
+        break;
+    }
+    default:
+        break;
+    }
 }
 
 // TODO: change cursor with pointerhandlers in qml?
@@ -559,6 +700,14 @@ bool SelectionEditor::eventFilter(QObject *watched, QEvent *event)
     case QEvent::KeyRelease:
         keyReleaseEvent(item, static_cast<QKeyEvent *>(event));
         break;
+    case QEvent::ShortcutOverride:
+        // Ectolens: a shortcut with Ctrl (Ctrl+Z, Ctrl+C) may never reach keyPressEvent;
+        // it is no hold for the magnifier either
+        if (d->ctrlHeld && static_cast<QKeyEvent *>(event)->key() != Qt::Key_Control) {
+            d->ctrlHold.stop();
+            d->setShowMagnifier(false);
+        }
+        break;
     case QEvent::HoverMove:
         hoverMoveEvent(item, static_cast<QHoverEvent *>(event));
         break;
@@ -585,7 +734,7 @@ void SelectionEditor::keyPressEvent(QQuickItem *item, QKeyEvent *event)
     d->pressedKeys.insert(event->keyCombination().key());
     Q_UNUSED(item);
     // Ectolens: while an AI agent's request asks (its dialog up, before Adjust First), the frame
-    // stays as its preview shows it: the arrows and Shift's magnifier wait, and only Enter (Send)
+    // stays as its preview shows it: the arrows and Ctrl's magnifier wait, and only Enter (Send)
     // and Esc (Don't Send) answer
     const auto core = SpectacleCore::instance();
     const bool agentDialog = core && core->agentAsking() && !core->agentAdjusting();
@@ -604,15 +753,26 @@ void SelectionEditor::keyPressEvent(QQuickItem *item, QKeyEvent *event)
             break;
         }
         d->handleArrowKey(event);
-        d->setShowMagnifier(event->modifiers().testFlag(Qt::ShiftModifier));
+        d->setShowMagnifier(event->modifiers().testFlag(Qt::ControlModifier));
         event->accept();
         break;
-    case Qt::Key_Shift:
+    case Qt::Key_Control:
         if (!agentDialog) {
-            d->setShowMagnifier(true);
+            d->ctrlPressed();
+        }
+        break;
+    case Qt::Key_Shift:
+        // Shift pressed mid-drag keeps the frame's proportions from here
+        if (d->dragLocation != Location::None) {
+            d->dragTo(d->dragModifiers | Qt::ShiftModifier);
         }
         break;
     default:
+        // Ctrl with another key is a shortcut (Ctrl+Z, Ctrl+C): no magnifier
+        if (d->ctrlHeld) {
+            d->ctrlHold.stop();
+            d->setShowMagnifier(false);
+        }
         break;
     }
 }
@@ -632,8 +792,13 @@ void SelectionEditor::keyReleaseEvent(QQuickItem *item, QKeyEvent *event)
     case Qt::Key_Left:
         event->accept();
         break;
+    case Qt::Key_Control:
+        d->ctrlReleased();
+        break;
     case Qt::Key_Shift:
-        d->setShowMagnifier(false);
+        if (d->dragLocation != Location::None) {
+            d->dragTo(d->dragModifiers & ~Qt::ShiftModifier);
+        }
         break;
     default:
         break;
@@ -790,6 +955,10 @@ void SelectionEditor::mousePressEvent(QQuickItem *item, QMouseEvent *event)
         d->setDragLocation(d->mouseLocation(d->mousePos));
         d->setMagnifierLocation(d->dragLocation);
         d->initialMouseOffset = d->determineInitialMouseOffset();
+        d->initialRect = d->selection->rectF();
+        d->initialCorner = d->mousePos - d->initialMouseOffset;
+        d->dragModifiers = event->modifiers();
+        d->followCtrl(event->modifiers(), d->dragLocation != Location::Inside && d->dragLocation != Location::None);
         d->disableArrowKeys = true;
 
         switch (d->dragLocation) {
@@ -834,59 +1003,12 @@ void SelectionEditor::mouseMoveEvent(QQuickItem *item, QMouseEvent *event)
     d->mousePos = mapSceneToLogicalGlobalPoint(scenePosition, item);
     Q_EMIT mousePositionChanged();
     d->setMagnifierLocation(d->dragLocation);
-    switch (d->dragLocation) {
-    case Location::None: {
+    if (d->dragLocation == Location::None) {
         d->setMouseCursor(item, d->mousePos);
-        break;
-    }
-    case Location::TopLeft:
-    case Location::TopRight:
-    case Location::BottomRight:
-    case Location::BottomLeft: {
-        const auto adjustedMousePos = d->mousePos - d->initialMouseOffset;
-        const bool afterX = adjustedMousePos.x() >= d->startPos.x();
-        const bool afterY = adjustedMousePos.y() >= d->startPos.y();
-        d->selection->setRect(afterX ? d->startPos.x() : adjustedMousePos.x(),
-                              afterY ? d->startPos.y() : adjustedMousePos.y(),
-                              qAbs(adjustedMousePos.x() - d->startPos.x()) + (afterX ? d->devicePixel : 0),
-                              qAbs(adjustedMousePos.y() - d->startPos.y()) + (afterY ? d->devicePixel : 0));
-        break;
-    }
-    case Location::Outside: {
-        d->selection->setRect(qMin(d->mousePos.x(), d->startPos.x()),
-                              qMin(d->mousePos.y(), d->startPos.y()),
-                              qAbs(d->mousePos.x() - d->startPos.x()) + d->devicePixel,
-                              qAbs(d->mousePos.y() - d->startPos.y()) + d->devicePixel);
-        break;
-    }
-    case Location::Top:
-    case Location::Bottom: {
-        const auto adjustedMousePos = d->mousePos - d->initialMouseOffset;
-        const bool afterY = adjustedMousePos.y() >= d->startPos.y();
-        d->selection->setRect(d->selection->x(),
-                              afterY ? d->startPos.y() : adjustedMousePos.y(),
-                              d->selection->width(),
-                              qAbs(adjustedMousePos.y() - d->startPos.y()) + (afterY ? d->devicePixel : 0));
-        break;
-    }
-    case Location::Right:
-    case Location::Left: {
-        const auto adjustedMousePos = d->mousePos - d->initialMouseOffset;
-        const bool afterX = adjustedMousePos.x() >= d->startPos.x();
-        d->selection->setRect(afterX ? d->startPos.x() : adjustedMousePos.x(),
-                              d->selection->y(),
-                              qAbs(adjustedMousePos.x() - d->startPos.x()) + (afterX ? d->devicePixel : 0),
-                              d->selection->height());
-        break;
-    }
-    case Location::Inside: {
-        // We use some math here to figure out if the diff with which we move the rectangle
-        QRectF newRect(d->mousePos - d->startPos + d->initialTopLeft, d->selection->sizeF());
-        d->selection->setRect(G::rectBounded(newRect, d->screensRect));
-        break;
-    }
-    default:
-        break;
+    } else {
+        d->dragModifiers = event->modifiers();
+        d->followCtrl(event->modifiers(), d->dragLocation != Location::Inside);
+        d->dragTo(event->modifiers());
     }
 
     event->accept();
