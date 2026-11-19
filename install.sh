@@ -119,7 +119,9 @@ case "$FAMILY" in
                     plasma-wayland-protocols wayland libpipewire ffmpeg libepoxy libdrm libva mesa
                     tesseract tesseract-data-eng libxcb xcb-util xcb-util-image xcb-util-cursor glib2)
                 missing() { pacman -T "$@" || true; }
-                INSTALL=(sudo pacman -S --needed --noconfirm);;
+                # -Syu, as Arch asks: with a package list older than the mirrors, -S alone asks for
+                # versions they no longer carry (404), and -Sy without -u is a partial upgrade
+                INSTALL=(sudo pacman -Syu --needed --noconfirm);;
     apt)        NEEDS=(build-essential git cmake ninja-build extra-cmake-modules gettext pkg-config
                     qt6-base-dev qt6-base-private-dev qt6-declarative-dev qt6-declarative-private-dev
                     qt6-wayland-dev qt6-wayland-private-dev qt6-multimedia-dev qt6-shader-baker
