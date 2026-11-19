@@ -1099,6 +1099,8 @@ if scenario == 'frameratio':
             states.setdefault(step, {})['rect'] = tuple(int(float(v)) for v in p[1:5])
         elif p[:3] == ['ECTOLENS-PROP', 'magnifier', 'visible'] and step:
             states.setdefault(step, {})['mag'] = p[3] if len(p) > 3 else ''
+        elif p[:3] == ['ECTOLENS-PROP', 'magnifier', 'x'] and step and len(p) > 3:
+            states.setdefault(step, {})['magx'] = float(p[3])
     def rect(n):
         return states.get(n, {}).get('rect')
     def mag(n):
@@ -1142,6 +1144,11 @@ if scenario == 'frameratio':
     check('four notches down zoom it out to the widest, 2x, and no further', factors.get('zoomout') == '2', str(factors))
     check('zooming leaves the frame as it was', rect('ctrldragend') is not None and rect('zoomin') == rect('ctrldragend') and rect('zoomout') == rect('ctrldragend'),
           f"{rect('ctrldragend')}, {rect('zoomin')}, {rect('zoomout')}")
+    # Measure with Ctrl held: the magnifier follows the ruler's end, 140 px on as the end moves 140
+    mx0, mx1 = (states.get(n, {}).get('magx') for n in ('ctrlmeasure', 'ctrlmeasuremore'))
+    check('with Measure on, Ctrl held through a drag of the ruler shows the magnifier', mag('ctrlmeasure') == 'true', str(mag('ctrlmeasure')))
+    check("the magnifier follows the ruler's end: 140 px on as the end moves from 560 to 700",
+          mx0 is not None and mx1 is not None and near(mx1 - mx0, 140), f'{mx0} -> {mx1}')
     sys.exit(1 if fails else 0)
 
 if scenario == 'frameundo':

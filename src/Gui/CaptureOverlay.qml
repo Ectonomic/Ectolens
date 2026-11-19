@@ -389,9 +389,16 @@ MouseArea {
             id: magnifierLoader
             objectName: "magnifier"
             readonly property bool picking: root.mode === "color" && root.toolPoint.x >= 0
+            // Ectolens: with Measure on, Ctrl's magnifier follows the ruler: its free end while it is
+            // dragged (where Shift keeps it straight), the pointer otherwise. Measure's own input takes
+            // the drag, so SelectionEditor's pointer stays where the drag began.
+            readonly property bool measuring: root.mode === "measure" && root.toolPoint.x >= 0
             readonly property point targetPoint: {
                 if (picking) {
                     return root.toolPoint
+                }
+                if (measuring) {
+                    return toolArea.pressed && root.measureEnd.x >= 0 ? root.measureEnd : root.toolPoint
                 }
                 if (SelectionEditor.magnifierLocation === SelectionEditor.FollowMouse) {
                     return SelectionEditor.mousePosition
@@ -428,7 +435,7 @@ MouseArea {
             readonly property rect rect: {
                 const margin = Kirigami.Units.gridUnit
                 const t = targetPoint
-                const loc = picking ? SelectionEditor.FollowMouse : SelectionEditor.magnifierLocation
+                const loc = picking || measuring ? SelectionEditor.FollowMouse : SelectionEditor.magnifierLocation
                 // the side it prefers: past the dragged edge or corner, or below right of the pointer
                 const centerX = loc === SelectionEditor.Top || loc === SelectionEditor.Bottom
                 const centerY = loc === SelectionEditor.Left || loc === SelectionEditor.Right
